@@ -1,0 +1,96 @@
+from typing import Optional, List, Dict
+from app.lib.supabase_client import get_supabase, authed_postgrest
+
+def get_my_role(access_token: str) -> Optional[str]:
+    sb = authed_postgrest(get_supabase(), access_token)
+    res = sb.table("profiles").select("role").single().execute()
+    return res.data["role"] if res.data else None
+
+def list_ingredients(access_token: str) -> List[Dict]:
+    sb = authed_postgrest(get_supabase(), access_token)
+    res = sb.table("ingredients").select("id,name").order("name").execute()
+    return res.data or []
+
+def create_ingredient(access_token: str, name: str) -> Dict:
+    sb = authed_postgrest(get_supabase(), access_token)
+    res = sb.table("ingredients").insert({"name": name}).execute()
+    return res.data[0] if res.data else {}
+
+def find_ingredient_by_name(access_token: str, name: str) -> Optional[Dict]:
+    sb = authed_postgrest(get_supabase(), access_token)
+    res = sb.table("ingredients").select("id,name").eq("name", name).maybe_single().execute()
+    return res.data
+
+def create_recipe(access_token: str, payload: Dict) -> Dict:
+    sb = authed_postgrest(get_supabase(), access_token)
+    res = sb.table("recipes").insert(payload).execute()
+    return res.data[0] if res.data else {}
+
+def add_recipe_ingredient(access_token: str, payload: Dict) -> Dict:
+    sb = authed_postgrest(get_supabase(), access_token)
+    res = sb.table("recipe_ingredients").insert(payload).execute()
+    return res.data[0] if res.data else {}
+
+def list_recipes(access_token: str) -> List[Dict]:
+    sb = authed_postgrest(get_supabase(), access_token)
+    res = (
+        sb.table("recipes")
+        .select(
+            "id,name,season,servings,prep_minutes,cook_minutes,total_minutes,created_by,"
+            "instructions,notes"
+        )
+        .order("name", desc=False)
+        .execute()
+    )
+    return res.data or []
+
+def map_creator_ids_to_names(access_token: str, creator_ids: List[str]) -> Dict[str, str]:
+    profiles = list_profiles_by_ids(access_token, creator_ids)
+    id_to_name = {}
+    for p in profiles:
+        fn = (p.get("first_name") or "").strip()
+        ln = (p.get("last_name") or "").strip()
+        full = (fn + " " + ln).strip()
+        id_to_name[p["id"]] = full if full else p["id"]
+    return id_to_name
+
+
+def get_recipe_ingredients(access_token: str, recipe_id: str) -> List[Dict]:
+    sb = authed_postgrest(get_supabase(), access_token)
+    # This returns recipe_ingredients rows with a nested ingredient name
+    res = (
+        sb.table("recipe_ingredients")
+        .select("ingredient_id,quantity,unit,comment,ingredients(name)")
+        .eq("recipe_id", recipe_id)
+        .execute()
+    )
+    return res.data or []
+
+def list_recipe_ingredients(access_token: str) -> List[Dict]:
+    sb = authed_postgrest(get_supabase(), access_token)
+    res = (
+        sb.table("recipe_ingredients")
+        .select("recipe_id,quantity,unit,comment,ingredients(name)")
+        .execute()
+    )
+    return res.data or []
+
+
+def list_profiles_by_ids(access_token: str, user_ids: List[str]) -> List[Dict]:
+    """
+    Fetch profiles for a set of user ids (UUIDs).
+    Returns rows like: {id, first_name, last_name, role}
+    """
+    if not user_ids:
+        return []
+
+    sb = authed_postgrest(get_supabase(), access_token)
+
+    # Supabase python client supports "in_" in most versions:
+    res = (
+        sb.table("profiles")
+        .select("id,first_name,last_name,role")
+        .in_("id", user_ids)
+        .execute()
+    )
+    return res.data or []

@@ -443,8 +443,14 @@ hr{
   background: rgba(0,0,0,.08);
 }
 
-[data-testid="stHeader"] { display: none !important; }
-[data-testid="stToolbar"] { display: none !important; }
+/* Keep header so the sidebar toggle exists, but make it invisible */
+[data-testid="stHeader"] {
+  background: transparent !important;
+}
+[data-testid="stToolbar"] {
+  background: transparent !important;
+}
+
 
 /* =========================
    Stronger global typography

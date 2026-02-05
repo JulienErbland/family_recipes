@@ -19,7 +19,12 @@ from app.lib.repos import (
 )
 from app.lib.ui import set_page_background, set_full_page_background
 
-st.set_page_config(page_title="My Space • Les recettes de la Madre", page_icon="👤", layout="wide")
+st.set_page_config(
+    page_title="My Space",
+    page_icon="👤",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 set_full_page_background("app/static/bg_my_space.png")
 init_session()
 

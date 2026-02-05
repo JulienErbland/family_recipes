@@ -11,7 +11,12 @@ from app.lib.repos import (
 )
 from app.lib.ui import set_page_background, set_full_page_background
 
-st.set_page_config(page_title="Add Recipe", page_icon="➕", layout="wide")
+st.set_page_config(
+    page_title="Add Recipe",
+    page_icon="➕",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
 set_full_page_background("app/static/bg_add_recipe.png")
 init_session()
 

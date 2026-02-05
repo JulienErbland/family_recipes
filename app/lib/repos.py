@@ -1,10 +1,40 @@
 from typing import Optional, List, Dict
 from app.lib.supabase_client import get_supabase, authed_postgrest
 
-def get_my_role(access_token: str) -> Optional[str]:
+
+def get_my_role(access_token: str) -> str:
     sb = authed_postgrest(get_supabase(), access_token)
-    res = sb.table("profiles").select("role").single().execute()
-    return res.data["role"] if res.data else None
+
+    res = (
+        sb.table("profiles")
+        .select("role")
+        .maybe_single()   # <-- CRITICAL CHANGE
+        .execute()
+    )
+
+    if res.data and res.data.get("role"):
+        return res.data["role"]
+
+    # If profile row does not exist yet
+    return "reader"
+
+def ensure_my_profile(access_token: str, user_id: str) -> None:
+    sb = authed_postgrest(get_supabase(), access_token)
+
+    existing = (
+        sb.table("profiles")
+        .select("id")
+        .eq("id", user_id)
+        .maybe_single()
+        .execute()
+    )
+
+    if existing.data:
+        return
+
+    sb.table("profiles").insert({"id": user_id, "role": "reader"}).execute()
+
+
 
 def list_ingredients(access_token: str) -> List[Dict]:
     sb = authed_postgrest(get_supabase(), access_token)

@@ -2,7 +2,7 @@ import streamlit as st
 
 from app.lib.session import init_session, is_logged_in
 from app.lib.auth_ui import auth_sidebar
-from app.lib.repos import get_my_role
+from app.lib.repos import get_my_role, ensure_my_profile
 from app.lib.ui import load_css
 from app.lib.brand import sidebar_brand
 
@@ -71,9 +71,15 @@ if not is_logged_in():
 # Logged-in content
 # =========================
 token = st.session_state.session.access_token
+user_id = st.session_state.session.user.id
 
+# Make sure profile exists (safety net)
+ensure_my_profile(token, user_id)
+
+# Now safely read role
 if "role" not in st.session_state or st.session_state.role is None:
     st.session_state.role = get_my_role(token)
+
 
 role = st.session_state.role or "reader"
 is_editor = (role == "editor")

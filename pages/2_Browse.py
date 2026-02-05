@@ -59,6 +59,11 @@ def render_multiline(text: str):
 recipes = cached_list_recipes(token)
 links = cached_list_recipe_ingredients(token)
 
+import app.lib.repos as r
+st.write("Repos file:", r.__file__)
+st.write("Has cached_list_recipes:", hasattr(r, "cached_list_recipes"))
+
+
 if not recipes:
     st.info("No recipes yet.")
     st.stop()

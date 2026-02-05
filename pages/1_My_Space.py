@@ -15,8 +15,6 @@ from app.lib.repos import (
     delete_recipe_ingredient_link,
     update_recipe_ingredient_link,
 )
-from app.lib.ui import load_css
-
 st.set_page_config(page_title="My Space • Les recettes de la Madre", page_icon="👤", layout="wide")
 init_session()
 

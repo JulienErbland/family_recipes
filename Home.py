@@ -2,17 +2,13 @@ import streamlit as st
 from app.lib.session import init_session, is_logged_in
 from app.lib.auth_ui import auth_sidebar
 from app.lib.repos import get_my_role
-from app.lib.ui import load_css
 
 st.set_page_config(page_title="Les recettes de la Madre", page_icon="🍋", layout="wide")
 
 init_session()
-#load_css()
 
 # Sidebar auth
 auth_sidebar()
-st.write("DEBUG: after auth_sidebar")
-st.sidebar.write("DEBUG: sidebar is alive")
 
 st.title("Home page")
 

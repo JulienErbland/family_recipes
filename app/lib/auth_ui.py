@@ -39,10 +39,11 @@ def auth_sidebar():
                     st.error(f"Login failed: {msg}")
 
     with tab_signup:
-        first_name = st.text_input("First name", key="signup_first_name")
-        last_name  = st.text_input("Last name",  key="signup_last_name")
+        fn = st.text_input("First name", key="signup_fn")
+        ln = st.text_input("Last name", key="signup_ln")
+
         signup_email = st.text_input("Email", key="signup_email")
-        signup_pw  = st.text_input("Password", type="password", key="signup_pw")
+        signup_pw = st.text_input("Password", type="password", key="signup_pw")
         signup_pw2 = st.text_input("Confirm password", type="password", key="signup_pw2")
 
         if st.button("Create account", key="signup_btn"):
@@ -54,23 +55,46 @@ def auth_sidebar():
                 st.error("Password must be at least 8 characters.")
                 st.stop()
 
+            em = (signup_email or "").strip()
+            first = (fn or "").strip()
+            last = (ln or "").strip()
+
+            if not em:
+                st.error("Please enter an email.")
+                st.stop()
+            if not first or not last:
+                st.error("Please enter first name and last name.")
+                st.stop()
+
             try:
+                # 1) Create account (store names in metadata so your trigger copies them)
                 res = sb.auth.sign_up({
-                    "email": signup_email,
+                    "email": em,
                     "password": signup_pw,
-                    # keep your options/data here if you added names
+                    "options": {
+                        "data": {"first_name": first, "last_name": last}
+                    }
                 })
 
-                st.success("Account created ✅ You may need to confirm your email, depending on settings.")
-                # If email confirmation is OFF, you can auto-login here (optional)
-                # (If you already implemented auto-login, keep it.)
+                # 2) If Supabase returns a session, log them in directly
+                if getattr(res, "session", None):
+                    st.session_state.session = res.session
+                    st.session_state.user = res.user
+                    st.success("Account created ✅ Logged in.")
+                    st.rerun()
+
+                # 3) Otherwise, try to sign in immediately (works when email confirmation is OFF)
+                try:
+                    login = sb.auth.sign_in_with_password({"email": em, "password": signup_pw})
+                    st.session_state.session = login.session
+                    st.session_state.user = login.user
+                    st.success("Account created ✅ Logged in.")
+                    st.rerun()
+                except Exception:
+                    # Most common case: email confirmation required
+                    st.success("Account created ✅ Please check your email to confirm your account, then log in.")
 
             except AuthWeakPasswordError:
-                st.error(
-                    "Password too weak. Use at least 8 characters, and add a mix of letters/numbers/symbols if required."
-                )
+                st.error("Password too weak. Use at least 8 characters (and meet any policy requirements).")
             except AuthApiError as e:
                 st.error(f"Sign up failed: {str(e)}")
-            except Exception as e:
-                st.error("Unexpected error during signup.")
-                st.exception(e)

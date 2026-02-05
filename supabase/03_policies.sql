@@ -1,23 +1,43 @@
 -- =========================================================
--- PROFILES
+-- PROFILES (RLS)
 -- =========================================================
 
--- Any logged-in user can read their own profile (to see their role/name)
+-- Make sure RLS is enabled
+alter table public.profiles enable row level security;
+
+-- Remove old/conflicting policies
 drop policy if exists "profiles: read own" on public.profiles;
-create policy "profiles: read own"
+drop policy if exists "profiles: read all (basic)" on public.profiles;
+drop policy if exists "profiles: update own" on public.profiles;
+
+-- READ: any logged-in user can read profiles (for showing creator names)
+create policy "profiles: read all (basic)"
 on public.profiles
 for select
 to authenticated
-using (id = auth.uid());
+using (true);
 
--- Allow users to update their own profile fields (name/surname)
-drop policy if exists "profiles: update own" on public.profiles;
+-- UPDATE: user can update only their own profile
 create policy "profiles: update own"
 on public.profiles
 for update
 to authenticated
 using (id = auth.uid())
 with check (id = auth.uid());
+
+-- PROFILES: allow a logged-in user to create THEIR OWN profile row
+drop policy if exists "profiles: insert own" on public.profiles;
+
+create policy "profiles: insert own"
+on public.profiles
+for insert
+to authenticated
+with check (
+  id = auth.uid()
+  and role = 'reader'
+);
+
+
 
 -- =========================================================
 -- RECIPES

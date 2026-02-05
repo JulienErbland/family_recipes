@@ -58,6 +58,18 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+st.info(
+    "Welcome to **La cuisine de la Madre** 👋\n\n"
+    "- This is the **family cookbook**, where recipes are shared, explored, and curated.\n"
+    "- Use **Browse** to explore recipes by **season** and **ingredients**.\n"
+    "- Your **role** defines what you can do:\n"
+    "  - **Reader** → browse and view recipes.\n"
+    "  - **Editor** → create, edit, and delete recipes.\n"
+    "- If you’re a reader and have the **editor code**, you can upgrade your role directly from this page.\n\n"
+    "Use the **left navigation** to move between Browse, Add Recipe, and My Space."
+)
+
+
 st.write("")
 
 # If not logged in, show CTA and stop

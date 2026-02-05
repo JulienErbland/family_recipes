@@ -45,6 +45,23 @@ sidebar_brand()
 
 st.title("👤 My Space")
 
+st.info(
+    "How My Space works:\n"
+    "- This page shows **only your own recipes**.\n"
+    "- Use the **Search** box to quickly find a recipe, then select it to open the editor.\n"
+    "- You’ll see three tabs:\n"
+    "  - **✍️ Edit**: update recipe details (name, seasons, servings, times, instructions, notes).\n"
+    "  - **🧂 Ingredients**: view all ingredient lines, **edit/remove** an existing line, or **add** a new one.\n"
+    "  - **⚠️ Danger zone**: permanently delete the recipe (requires confirmation).\n"
+    "- Roles matter:\n"
+    "  - **Editors** can save changes, edit ingredients, and delete recipes.\n"
+    "  - **Readers** can view everything but cannot modify anything.\n"
+    "- After saving or deleting, the page refreshes automatically to show the latest data."
+)
+
+st.caption("Tip: ingredient names must match exactly — 'Tomato' and 'Tomatoes' will be treated as different ingredients.")
+
+
 if not is_logged_in():
     st.warning("Please log in via Home.")
     st.stop()

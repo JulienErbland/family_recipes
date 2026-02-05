@@ -34,6 +34,15 @@ load_css()
 sidebar_brand()
 
 st.title("➕ Add a recipe")
+st.info(
+    "How it works:\n"
+    "- Fill in the **recipe details** (name, seasons, times, instructions).\n"
+    "- Add your **ingredients line by line** (quantity + unit + optional comment).\n"
+    "- For each ingredient, you can either **select an existing one** from the list, "
+    "or **create a new ingredient** if it doesn’t exist yet.\n"
+    "- When you click **Create recipe now**, the recipe is saved, seasons are linked, "
+    "and ingredients are automatically created (if needed) and attached to the recipe."
+)
 
 if not is_logged_in():
     st.warning("Please log in via Home.")
@@ -230,7 +239,8 @@ if create_btn:
             "comment": line.get("comment"),
         })
 
-    st.success("Recipe created ✅")
     st.cache_data.clear()
+    st.success("Recipe created ✅")
+
     reset_ingredient_lines()
     st.rerun()

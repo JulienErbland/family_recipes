@@ -36,6 +36,19 @@ sidebar_brand()
 
 st.title("📚 Browse recipes")
 
+st.info(
+    "How to browse recipes:\n"
+    "- Use the **Filters** in the left sidebar to narrow down the list.\n"
+    "- You can filter by **Seasons** (winter/spring/summer/fall) and choose how strict it is:\n"
+    "  - **Contains ANY** → shows recipes that match *at least one* of the selected seasons.\n"
+    "  - **Contains ALL** → shows recipes that match *every* selected season.\n"
+    "- You can also filter by **Ingredients** the same way:\n"
+    "  - **Contains ANY** → recipes containing *at least one* selected ingredient.\n"
+    "  - **Contains ALL** → recipes containing *all* selected ingredients.\n"
+    "- Use **Search** to find recipes by name, and **Sort** to order results.\n"
+    "- Finally, pick a recipe in the **Details** section to view full ingredients + instructions."
+)
+
 if not is_logged_in():
     st.warning("Please log in via Home.")
     st.stop()

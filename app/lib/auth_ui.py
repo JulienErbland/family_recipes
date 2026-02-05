@@ -1,7 +1,7 @@
 import streamlit as st
 from app.lib.session import init_session, logout
 from app.lib.supabase_client import get_supabase
-from supabase_auth.errors import AuthApiError
+from supabase_auth.errors import AuthApiError, AuthWeakPasswordError
 
 def auth_sidebar():
     init_session()
@@ -46,40 +46,31 @@ def auth_sidebar():
         signup_pw2 = st.text_input("Confirm password", type="password", key="signup_pw2")
 
         if st.button("Create account", key="signup_btn"):
-            fn = (first_name or "").strip()
-            ln = (last_name or "").strip()
-            em = (signup_email or "").strip()
-
-            if not fn or not ln:
-                st.error("Please enter your first name and last name.")
-                st.stop()
-            if not em:
-                st.error("Please enter your email.")
-                st.stop()
-            if not signup_pw:
-                st.error("Please enter a password.")
-                st.stop()
             if signup_pw != signup_pw2:
                 st.error("Passwords do not match.")
                 st.stop()
 
+            if len(signup_pw) < 8:
+                st.error("Password must be at least 8 characters.")
+                st.stop()
+
             try:
                 res = sb.auth.sign_up({
-                    "email": em,
+                    "email": signup_email,
                     "password": signup_pw,
-                    "options": {
-                        "data": {"first_name": fn, "last_name": ln}
-                    }
+                    # keep your options/data here if you added names
                 })
 
-                # ✅ Auto-login if Supabase returns a session (email confirmation OFF)
-                if getattr(res, "session", None):
-                    st.session_state.session = res.session
-                    st.session_state.user = res.user
-                    st.success("Account created — logged in ✅")
-                    st.rerun()
+                st.success("Account created ✅ You may need to confirm your email, depending on settings.")
+                # If email confirmation is OFF, you can auto-login here (optional)
+                # (If you already implemented auto-login, keep it.)
 
-                # Email confirmation ON → no session yet
-                st.success("Account created. Please check your email to confirm, then log in.")
+            except AuthWeakPasswordError:
+                st.error(
+                    "Password too weak. Use at least 8 characters, and add a mix of letters/numbers/symbols if required."
+                )
             except AuthApiError as e:
                 st.error(f"Sign up failed: {str(e)}")
+            except Exception as e:
+                st.error("Unexpected error during signup.")
+                st.exception(e)

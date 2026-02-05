@@ -1,3 +1,14 @@
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[0]  # for Home.py
+# For pages files, use parents[1] (because pages/ is one level deeper)
+# ROOT = Path(__file__).resolve().parents[1]
+
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+
 import streamlit as st
 
 from app.lib.session import init_session, is_logged_in

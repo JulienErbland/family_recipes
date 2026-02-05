@@ -1,8 +1,6 @@
 import streamlit as st
 import pandas as pd
 
-import os
-from app.lib.repos import set_my_role
 
 
 from app.lib.session import init_session, is_logged_in
@@ -19,7 +17,10 @@ from app.lib.repos import (
     delete_recipe_ingredient_link,
     update_recipe_ingredient_link,
 )
+from app.lib.ui import set_page_background, set_full_page_background
+
 st.set_page_config(page_title="My Space • Les recettes de la Madre", page_icon="👤", layout="wide")
+set_full_page_background("app/static/bg_my_space.png")
 init_session()
 
 from app.lib.ui import load_css
@@ -51,27 +52,6 @@ if not can_edit:
     st.info("You are a **reader**. You can browse recipes, but only **editors** can edit or delete.")
     # Still show their recipes read-only
 
-EDITOR_CODE = os.getenv("EDITOR_INVITE_CODE", "")
-
-if role != "editor":
-    with st.expander("🔑 Become an editor"):
-        st.write("If you have the family editor code, enter it to unlock editing.")
-        code = st.text_input("Editor code", type="password")
-
-        if st.button("Upgrade to editor", use_container_width=True):
-            if not EDITOR_CODE:
-                st.error("Editor code is not configured on the server.")
-                st.stop()
-
-            if code.strip() != EDITOR_CODE:
-                st.error("Wrong code.")
-                st.stop()
-
-            set_my_role(token, user_id, "editor")
-            st.session_state.role = "editor"
-            st.success("Upgraded to editor ✅")
-            st.cache_data.clear()
-            st.rerun()
 
 # --------------------------------------------
 
@@ -83,13 +63,29 @@ recipes = load_my_recipes(token, user_id)
 
 df_stats = pd.DataFrame(recipes)
 total = len(df_stats)
-avg_time = int(df_stats["total_minutes"].dropna().astype(int).mean()) if "total_minutes" in df_stats else 0
+
+avg_time = (
+    int(df_stats["total_minutes"].dropna().astype(int).mean())
+    if "total_minutes" in df_stats and not df_stats["total_minutes"].dropna().empty
+    else 0
+)
 
 st.markdown(
-    f"<span class='badge'>My recipes: {total}</span>"
-    f"<span class='badge'>Avg total time: {avg_time} min</span>",
-    unsafe_allow_html=True
+    f"""
+    <div style="display:grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap:14px; margin-bottom:18px;">
+        <div class="card">
+            <h3 style="margin:0">📚 {total}</h3>
+            <p style="margin:4px 0 0">My recipes</p>
+        </div>
+        <div class="card">
+            <h3 style="margin:0">⏱️ {avg_time} min</h3>
+            <p style="margin:4px 0 0">Average total time</p>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
 )
+
 
 
 top_left, top_right = st.columns([3, 1])

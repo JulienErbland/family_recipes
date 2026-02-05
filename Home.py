@@ -6,7 +6,18 @@ from app.lib.repos import get_my_role
 from app.lib.ui import load_css
 from app.lib.brand import sidebar_brand
 
+import os
+from app.lib.repos import set_my_role
+
+from app.lib.ui import set_page_background, set_full_page_background
+
+
 st.set_page_config(page_title="La cuisine de la Madre", page_icon="🍋", layout="wide")
+
+#set_page_background("app/static/bg_home.png", "bg-home")
+#st.markdown("<div class='bg-home'>", unsafe_allow_html=True)
+
+set_full_page_background("app/static/bg_home.png")
 
 init_session()
 load_css()
@@ -23,7 +34,7 @@ st.markdown(
     <div class="hero">
       <h1 style="margin:0">🍋 La cuisine de la Madre</h1>
       <p style="margin:8px 0 0; color:rgba(0,0,0,.65); font-size: 1.02rem">
-        Un carnet de recettes simple, beau, et partagé en famille.
+        Le carnet de recettes de la Tribue Erbland (et plus)
       </p>
     </div>
     """,
@@ -70,6 +81,34 @@ st.markdown(
 
 st.write("")
 
+EDITOR_CODE = os.getenv("EDITOR_INVITE_CODE", "")
+
+# Show editor upgrade UI only for non-editors
+if st.session_state.role != "editor":
+    with st.expander("🔑 Become an editor"):
+        st.write("If you have the family editor code, enter it to unlock recipe editing.")
+        code = st.text_input("Editor code", type="password", key="home_editor_code")
+
+        if st.button("Upgrade to editor", use_container_width=True, key="home_upgrade_btn"):
+            if not EDITOR_CODE:
+                st.error("Editor code is not configured on the server (missing EDITOR_INVITE_CODE).")
+                st.stop()
+
+            if code.strip() != EDITOR_CODE:
+                st.error("Wrong code.")
+                st.stop()
+
+            user_id = st.session_state.session.user.id
+            token = st.session_state.session.access_token
+
+            set_my_role(token, user_id, "editor")
+
+            # Update local state immediately
+            st.session_state.role = "editor"
+            st.success("Upgraded to editor ✅")
+            st.rerun()
+
+
 # =========================
 # Feature cards
 # =========================
@@ -105,3 +144,5 @@ with c3:
 
 st.write("")
 st.caption("Use the pages in the left navigation to browse recipes and manage your space.")
+
+#st.markdown("</div>", unsafe_allow_html=True)

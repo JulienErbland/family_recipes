@@ -8,8 +8,10 @@ from app.lib.repos import (
     list_recipe_ingredients,
     list_profiles_by_ids,
 )
+from app.lib.ui import set_page_background, set_full_page_background
 
 st.set_page_config(page_title="Browse", page_icon="📚", layout="wide")
+set_full_page_background("app/static/bg_browse.png")
 init_session()
 
 from app.lib.ui import load_css

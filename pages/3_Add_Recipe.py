@@ -8,8 +8,11 @@ from app.lib.repos import (
     find_ingredient_by_name,
     create_recipe,
     add_recipe_ingredient,
+    # NEW (Option A)
+    set_recipe_seasons,
 )
-from app.lib.ui import set_page_background, set_full_page_background
+from app.lib.ui import set_full_page_background, load_css
+from app.lib.brand import sidebar_brand
 
 st.set_page_config(
     page_title="Add Recipe",
@@ -19,15 +22,8 @@ st.set_page_config(
 )
 set_full_page_background("app/static/bg_add_recipe.jpg")
 init_session()
-
-from app.lib.ui import load_css
 load_css()
-
-from app.lib.brand import sidebar_brand
 sidebar_brand()
-
-
-
 
 st.title("➕ Add a recipe")
 
@@ -36,10 +32,10 @@ if not is_logged_in():
     st.stop()
 
 token = st.session_state.session.access_token
-user_id = st.session_state.user.id
+user_id = st.session_state.session.user.id
 
 # Load role if needed
-if st.session_state.role is None:
+if "role" not in st.session_state or st.session_state.role is None:
     st.session_state.role = get_my_role(token, user_id)
 
 if st.session_state.role != "editor":
@@ -47,7 +43,7 @@ if st.session_state.role != "editor":
     st.stop()
 
 # ---------- Session state for ingredient lines ----------
-st.session_state.setdefault("ingredient_lines", [])  # list of dicts
+st.session_state.setdefault("ingredient_lines", [])  # list[dict]
 
 def reset_ingredient_lines():
     st.session_state.ingredient_lines = []
@@ -59,8 +55,14 @@ colA, colB, colC = st.columns([2, 1, 1])
 
 with colA:
     name = st.text_input("Recipe name *")
+
 with colB:
-    season = st.selectbox("Season", ["all", "winter", "spring", "summer", "fall"])
+    seasons = st.multiselect(
+        "Seasons *",
+        ["winter", "spring", "summer", "fall"],
+        default=[],
+    )
+
 with colC:
     st.caption("Total time is computed automatically (prep + cook).")
 
@@ -110,11 +112,11 @@ with right:
         st.write("_None yet_")
     else:
         for idx, line in enumerate(st.session_state.ingredient_lines, start=1):
-            st.write(
-                f"{idx}. **{line['name']}** "
-                f"{(line.get('quantity') or '')} {(line.get('unit') or '')} "
-                f"{('(' + line['comment'] + ')') if line.get('comment') else ''}"
-            )
+            q = (line.get("quantity") or "")
+            u = (line.get("unit") or "")
+            c = line.get("comment")
+            c_txt = f" ({c})" if c else ""
+            st.write(f"{idx}. **{line['name']}** {q} {u}{c_txt}")
 
         if st.button("🗑️ Clear ingredient list"):
             reset_ingredient_lines()
@@ -160,18 +162,21 @@ if create_btn:
         st.error("Recipe name is required.")
         st.stop()
 
+    if not seasons:
+        st.error("Please select at least one season.")
+        st.stop()
+
     if len(st.session_state.ingredient_lines) == 0:
         st.error("Add at least one ingredient line.")
         st.stop()
 
-    # 1) Create recipe
+    # 1) Create recipe (Option A: NO season field)
     recipe = create_recipe(token, {
         "name": name.strip(),
-        "season": season,
         "prep_minutes": int(prep),
         "cook_minutes": int(cook),
-        "instructions": instructions or None,
-        "notes": notes or None,
+        "instructions": instructions.strip() or None,
+        "notes": notes.strip() or None,
         "created_by": user_id,  # required by your RLS policy
     })
 
@@ -180,18 +185,22 @@ if create_btn:
         st.error("Recipe creation failed (no recipe id returned).")
         st.stop()
 
-    # 2) For each ingredient line: ensure ingredient exists, then link
-    # We avoid duplicates by caching lookups in-memory
-    cached_ids = dict(name_to_id)  # start with existing
+    # 2) Set seasons (Option A join table)
+    try:
+        set_recipe_seasons(token, recipe_id, seasons)
+    except Exception as e:
+        st.error(f"Recipe created but setting seasons failed: {e}")
+        st.stop()
+
+    # 3) Ensure ingredients exist, then link
+    cached_ids = dict(name_to_id)  # start with existing ids
 
     for line in st.session_state.ingredient_lines:
         ing_name = line["name"].strip()
 
-        # Ensure ingredient exists
         ing_id = cached_ids.get(ing_name)
-
         if not ing_id:
-            # Try create; if already exists (race / duplicate), fetch it
+            # Try create; if already exists, fetch it
             try:
                 created = create_ingredient(token, ing_name)
                 ing_id = created.get("id")
@@ -205,7 +214,6 @@ if create_btn:
 
             cached_ids[ing_name] = ing_id
 
-        # Link ingredient to recipe
         add_recipe_ingredient(token, {
             "recipe_id": recipe_id,
             "ingredient_id": ing_id,
@@ -215,12 +223,6 @@ if create_btn:
         })
 
     st.success("Recipe created ✅")
-    st.write("Recipe id:", recipe_id)
-    # ✅ Invalidate cached SELECTs so Browse/My Space refresh immediately
     st.cache_data.clear()
-
-    # Reset ingredient list to avoid accidental duplicates on next create
     reset_ingredient_lines()
-
-    # Optional: rerun to reset UI fields + force fresh loads on this page too
     st.rerun()

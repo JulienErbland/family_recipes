@@ -4,15 +4,16 @@ import re
 
 from app.lib.session import init_session, is_logged_in
 from app.lib.repos import (
-    list_recipes,
-    list_recipe_ingredients,
-    list_profiles_by_ids,
     cached_list_recipes,
     cached_list_recipe_ingredients,
     cached_list_profiles_by_ids,
+    # NEW (Option A)
+    cached_list_recipe_seasons,
 )
 
-from app.lib.ui import set_page_background, set_full_page_background
+from app.lib.ui import set_full_page_background
+from app.lib.ui import load_css
+from app.lib.brand import sidebar_brand
 
 st.set_page_config(
     page_title="Browse",
@@ -22,13 +23,8 @@ st.set_page_config(
 )
 set_full_page_background("app/static/bg_browse.jpg")
 init_session()
-
-from app.lib.ui import load_css
 load_css()
-
-from app.lib.brand import sidebar_brand
 sidebar_brand()
-
 
 st.title("📚 Browse recipes")
 
@@ -58,6 +54,7 @@ def render_multiline(text: str):
 # =========================
 recipes = cached_list_recipes(token)
 links = cached_list_recipe_ingredients(token)
+season_rows = cached_list_recipe_seasons(token)
 
 if not recipes:
     st.info("No recipes yet.")
@@ -66,12 +63,30 @@ if not recipes:
 df_recipes = pd.DataFrame(recipes)
 
 # --- Ensure columns exist even if empty / older schema ---
-for col in ["season", "servings", "prep_minutes", "cook_minutes", "total_minutes", "created_by", "instructions", "notes"]:
+# Option A: recipes no longer has 'season'
+for col in ["servings", "prep_minutes", "cook_minutes", "total_minutes", "created_by", "instructions", "notes"]:
     if col not in df_recipes.columns:
         df_recipes[col] = None
 
 # Clean recipe names (in case old data contains "(id)" suffix)
 df_recipes["name"] = df_recipes["name"].astype(str).apply(strip_trailing_id)
+
+# =========================
+# Seasons aggregation (Option A)
+# =========================
+df_seasons = pd.DataFrame(season_rows)
+
+if df_seasons.empty:
+    seasons_by_recipe = {}
+else:
+    seasons_by_recipe = (
+        df_seasons.groupby("recipe_id")["season"]
+        .apply(lambda s: sorted(set([x for x in s.tolist() if x])))
+        .to_dict()
+    )
+
+df_recipes["seasons"] = df_recipes["id"].map(lambda rid: seasons_by_recipe.get(rid, []))
+df_recipes["seasons_str"] = df_recipes["seasons"].map(lambda xs: ", ".join(xs) if xs else "—")
 
 # =========================
 # Creator names: id -> "First Last" (no UID fallback)
@@ -109,23 +124,21 @@ def fmt_line(row) -> str:
     return base
 
 if not df_links.empty:
-    # ✅ for filtering
+    # for filtering
     df_links["ingredient_name"] = df_links["ingredients"].apply(
         lambda x: strip_trailing_id((x or {}).get("name", ""))
     )
-    # ✅ for display (quantity/unit/comment)
+    # for display
     df_links["ingredient_line"] = df_links.apply(fmt_line, axis=1)
 else:
     df_links = pd.DataFrame(columns=["recipe_id", "ingredient_name", "ingredient_line"])
 
-# For table preview (compact)
 ingredients_by_recipe = (
     df_links.groupby("recipe_id")["ingredient_name"]
     .apply(lambda s: sorted(set([x for x in s if x])))
     .to_dict()
 )
 
-# For details view (with quantities)
 ingredient_lines_by_recipe = (
     df_links.groupby("recipe_id")["ingredient_line"]
     .apply(lambda s: [x for x in s.tolist() if x])
@@ -136,17 +149,15 @@ df_recipes["ingredients"] = df_recipes["id"].map(lambda rid: ingredients_by_reci
 df_recipes["ingredients_lines"] = df_recipes["id"].map(lambda rid: ingredient_lines_by_recipe.get(rid, []))
 df_recipes["ingredients_str"] = df_recipes["ingredients"].map(lambda xs: ", ".join(xs))
 
-
-
 # =========================
 # Filters UI
 # =========================
 st.sidebar.header("Filters")
 
-# Season filter
-seasons_present = sorted([s for s in df_recipes["season"].dropna().unique().tolist()])
-all_seasons = ["all"] + [s for s in seasons_present if s != "all"]
-season_choice = st.sidebar.selectbox("Season", ["(any)"] + all_seasons)
+# Seasons filter (Option A: multi-season)
+ALL_SEASONS = ["winter", "spring", "summer", "fall"]
+chosen_seasons = st.sidebar.multiselect("Seasons", ALL_SEASONS)
+season_match_mode = st.sidebar.radio("Season match", ["Contains ANY", "Contains ALL"], horizontal=False)
 
 # Creator filter (by name)
 creator_names = sorted(df_recipes["creator_name"].dropna().unique().tolist())
@@ -155,18 +166,27 @@ creator_choice = st.sidebar.selectbox("Creator", ["(any)"] + creator_names)
 # Ingredient filter
 all_ingredients = sorted(df_links["ingredient_name"].dropna().unique().tolist())
 chosen_ingredients = st.sidebar.multiselect("Ingredients", all_ingredients)
-match_mode = st.sidebar.radio("Ingredient match", ["Contains ANY", "Contains ALL"])
+ingredient_match_mode = st.sidebar.radio("Ingredient match", ["Contains ANY", "Contains ALL"])
 
-
-
+# Search + sort
+search = st.sidebar.text_input("Search recipe name")
+sort_choice = st.sidebar.selectbox("Sort by", ["Name (A→Z)", "Total time (low→high)", "Total time (high→low)"])
 
 # =========================
 # Apply filters
 # =========================
 df = df_recipes.copy()
 
-if season_choice != "(any)":
-    df = df[df["season"] == season_choice]
+if chosen_seasons:
+    chosen_set = set(chosen_seasons)
+
+    def season_matches(season_list):
+        sset = set(season_list or [])
+        if season_match_mode == "Contains ANY":
+            return len(sset & chosen_set) > 0
+        return chosen_set.issubset(sset)
+
+    df = df[df["seasons"].apply(season_matches)]
 
 if creator_choice != "(any)":
     df = df[df["creator_name"] == creator_choice]
@@ -174,17 +194,13 @@ if creator_choice != "(any)":
 if chosen_ingredients:
     chosen_set = set(chosen_ingredients)
 
-    def matches(ing_list):
+    def ing_matches(ing_list):
         ing_set = set(ing_list or [])
-        if match_mode == "Contains ANY":
+        if ingredient_match_mode == "Contains ANY":
             return len(ing_set & chosen_set) > 0
         return chosen_set.issubset(ing_set)
 
-    df = df[df["ingredients"].apply(matches)]
-
-
-search = st.sidebar.text_input("Search recipe name")
-sort_choice = st.sidebar.selectbox("Sort by", ["Name (A→Z)", "Total time (low→high)", "Total time (high→low)"])
+    df = df[df["ingredients"].apply(ing_matches)]
 
 if search.strip():
     df = df[df["name"].str.contains(search.strip(), case=False, na=False)]
@@ -196,14 +212,21 @@ elif sort_choice == "Total time (low→high)":
 else:
     df = df.sort_values("total_minutes", ascending=False)
 
+
 # =========================
 # Table view
 # =========================
 st.subheader(f"Recipes ({len(df)} shown)")
 
+def seasons_label(seasons):
+    if set(seasons) == {"winter", "spring", "summer", "fall"}:
+        return "All year"
+    return ", ".join(seasons)
+
+
 cols = [
     "name",
-    "season",
+    "seasons_str",
     "servings",
     "prep_minutes",
     "cook_minutes",
@@ -215,7 +238,7 @@ cols = [c for c in cols if c in df.columns]
 
 df_display = df[cols].rename(columns={
     "name": "Recipe",
-    "season": "Season",
+    "seasons_str": "Seasons",
     "servings": "Servings",
     "prep_minutes": "Prep (min)",
     "cook_minutes": "Cook (min)",
@@ -232,17 +255,12 @@ st.dataframe(df_display, width="stretch", hide_index=True)
 st.divider()
 st.subheader("Details")
 
-# First selector: recipe name only
 recipe_names = df["name"].fillna("").tolist()
 selected_name = st.selectbox("Select a recipe", ["(none)"] + sorted(set(recipe_names)))
-
-
-
 
 if selected_name != "(none)":
     candidates = df[df["name"] == selected_name]
 
-    # If duplicates exist, disambiguate using creator name (still no IDs shown)
     if len(candidates) > 1:
         chosen_uid = st.selectbox(
             "Which one?",
@@ -255,8 +273,8 @@ if selected_name != "(none)":
 
     st.markdown(f"### {row.get('name')}")
     st.write(f"Creator: **{row.get('creator_name','')}**")
+    st.write(f"Seasons: **{seasons_label(row['seasons'])}**")
     st.write(
-        f"Season: **{row.get('season','all')}** | "
         f"Servings: **{row.get('servings', 1)}**"
     )
     st.write(
@@ -268,8 +286,6 @@ if selected_name != "(none)":
     st.write("**Ingredients:**")
     for line in row.get("ingredients_lines", []):
         st.write(f"- {line}")
-
-
 
     instructions = row.get("instructions")
     if instructions:

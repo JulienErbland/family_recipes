@@ -67,13 +67,14 @@ def list_recipes(access_token: str) -> List[Dict]:
     res = (
         sb.table("recipes")
         .select(
-            "id,name,season,servings,prep_minutes,cook_minutes,total_minutes,created_by,"
+            "id,name,servings,prep_minutes,cook_minutes,total_minutes,created_by,"
             "instructions,notes"
         )
         .order("name", desc=False)
         .execute()
     )
     return res.data or []
+
 
 def map_creator_ids_to_names(access_token: str, creator_ids: List[str]) -> Dict[str, str]:
     profiles = list_profiles_by_ids(access_token, creator_ids)
@@ -131,7 +132,7 @@ def list_my_recipes(access_token: str, user_id: str) -> List[Dict]:
     res = (
         sb.table("recipes")
         .select(
-            "id,name,season,servings,prep_minutes,cook_minutes,total_minutes,created_by,"
+            "id,name,servings,prep_minutes,cook_minutes,total_minutes,created_by,"
             "instructions,notes,created_at,updated_at"
         )
         .eq("created_by", user_id)
@@ -140,13 +141,54 @@ def list_my_recipes(access_token: str, user_id: str) -> List[Dict]:
     )
     return res.data or []
 
+def list_recipe_seasons(access_token: str) -> List[Dict]:
+    """
+    Returns rows like:
+    { "recipe_id": "<uuid>", "season": "spring" }
+    """
+    sb = authed_postgrest(get_supabase(), access_token)
+    res = sb.table("recipe_seasons").select("recipe_id,season").execute()
+    return res.data or []
+
+def get_recipe_seasons(access_token: str, recipe_id: str) -> List[str]:
+    sb = authed_postgrest(get_supabase(), access_token)
+    res = (
+        sb.table("recipe_seasons")
+        .select("season")
+        .eq("recipe_id", recipe_id)
+        .execute()
+    )
+    rows = res.data or []
+    return sorted({r.get("season") for r in rows if r.get("season")})
+
+def set_recipe_seasons(access_token: str, recipe_id: str, seasons: List[str]) -> bool:
+    """
+    Replaces all seasons for a recipe (delete + insert).
+    """
+    sb = authed_postgrest(get_supabase(), access_token)
+
+    # normalize
+    seasons = sorted({s for s in (seasons or []) if s})
+
+    # delete old links
+    sb.table("recipe_seasons").delete().eq("recipe_id", recipe_id).execute()
+
+    # insert new links
+    if seasons:
+        rows = [{"recipe_id": recipe_id, "season": s} for s in seasons]
+        sb.table("recipe_seasons").insert(rows).execute()
+
+    return True
+
+
 def update_recipe(access_token: str, recipe_id: str, patch: Dict) -> Dict:
     sb = authed_postgrest(get_supabase(), access_token)
     allowed = {k: v for k, v in patch.items() if k in {
-        "name", "season", "servings", "prep_minutes", "cook_minutes", "instructions", "notes"
+        "name", "servings", "prep_minutes", "cook_minutes", "instructions", "notes"
     }}
     res = sb.table("recipes").update(allowed).eq("id", recipe_id).execute()
     return res.data[0] if res.data else {}
+
 
 def delete_recipe(access_token: str, recipe_id: str) -> bool:
     sb = authed_postgrest(get_supabase(), access_token)
@@ -199,3 +241,12 @@ def cached_list_my_recipes(access_token: str, user_id: str) -> List[Dict]:
 @st.cache_data(ttl=60, show_spinner=False)
 def cached_get_recipe_ingredients(access_token: str, recipe_id: str) -> List[Dict]:
     return get_recipe_ingredients(access_token, recipe_id)
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def cached_list_recipe_seasons(access_token: str) -> List[Dict]:
+    return list_recipe_seasons(access_token)
+
+@st.cache_data(ttl=60, show_spinner=False)
+def cached_get_recipe_seasons(access_token: str, recipe_id: str) -> List[str]:
+    return get_recipe_seasons(access_token, recipe_id)

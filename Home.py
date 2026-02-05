@@ -81,7 +81,9 @@ st.markdown(
 
 st.write("")
 
-EDITOR_CODE = os.getenv("EDITOR_INVITE_CODE", "")
+
+EDITOR_CODE = st.secrets.get("EDITOR_INVITE_CODE", os.getenv("EDITOR_INVITE_CODE", ""))
+
 
 # Show editor upgrade UI only for non-editors
 if st.session_state.role != "editor":

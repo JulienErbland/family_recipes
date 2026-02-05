@@ -1,0 +1,9 @@
+streamlit>=1.32,<2
+pandas>=2.0,<3
+numpy>=1.24,<3
+Pillow>=10,<12
+python-dotenv>=1,<2
+supabase>=2.0,<3
+supabase-auth>=2.0,<3
+postgrest>=0.16,<3
+httpx>=0.24,<1

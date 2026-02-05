@@ -1,0 +1,143 @@
+/* =========================
+   GLOBAL
+   ========================= */
+
+:root {
+  --bg-main: #fffaf3;
+  --bg-card: rgba(255, 255, 255, 0.70);
+  --border-soft: rgba(0, 0, 0, 0.08);
+
+  --accent-main: #ff6b6b;
+  --accent-soft: #ffe1d6;
+
+  --text-main: #1f1f1f;
+  --text-muted: rgba(0, 0, 0, 0.65);
+}
+
+html, body {
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont;
+  font-size: 18px;          /* ⬅️ bigger base text */
+  line-height: 1.6;
+}
+
+/* Make common text elements readable by default */
+p, li, span, label, div {
+  font-size: 18px;
+}
+
+/* Headings scale (helps inside cards and custom HTML) */
+h1 { font-size: 44px; font-weight: 850; line-height: 1.08; margin: 0 0 10px 0; }
+h2 { font-size: 34px; font-weight: 750; line-height: 1.12; margin: 0 0 10px 0; }
+h3 { font-size: 24px; font-weight: 650; line-height: 1.2;  margin: 0 0 8px 0; }
+
+/* =========================
+   HERO (top banner)
+   ========================= */
+
+.hero {
+  padding: 32px 34px;
+  border-radius: 26px;
+  background: linear-gradient(
+    135deg,
+    var(--accent-soft),
+    rgba(255, 255, 255, 0.86)
+  );
+  border: 1px solid var(--border-soft);
+  margin-bottom: 26px;
+}
+
+.hero-title {
+  font-size: 72px;          /* ⬅️ much bigger title */
+  font-weight: 950;
+  line-height: 1.02;
+  margin-bottom: 12px;
+  letter-spacing: -0.5px;
+}
+
+.hero-subtitle {
+  font-size: 20px;          /* ⬅️ bigger subtitle */
+  color: var(--text-muted);
+  max-width: 900px;
+}
+
+/* Responsive: keep hero readable on small screens */
+@media (max-width: 700px) {
+  html, body { font-size: 17px; }
+  p, li, span, label, div { font-size: 17px; }
+  .hero { padding: 22px 20px; }
+  .hero-title { font-size: 44px; }
+  .hero-subtitle { font-size: 18px; }
+}
+
+/* =========================
+   CARDS
+   ========================= */
+
+.card {
+  padding: 20px 22px;
+  border-radius: 20px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-soft);
+  height: 100%;
+}
+
+.card h3 {
+  margin-top: 0;
+  margin-bottom: 8px;
+}
+
+.card p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 18px;          /* ⬅️ ensure card text is bigger */
+  line-height: 1.55;
+}
+
+/* =========================
+   BADGES
+   ========================= */
+
+.badge {
+  display: inline-block;
+  padding: 6px 12px;        /* ⬅️ slightly larger */
+  border-radius: 999px;
+  font-size: 14px;          /* ⬅️ bigger badge text */
+  border: 1px solid var(--border-soft);
+  background: rgba(255, 255, 255, 0.75);
+  color: var(--text-muted);
+  margin-right: 8px;
+}
+
+/* =========================
+   DANGER ZONE
+   ========================= */
+
+.danger {
+  border: 1px solid rgba(255, 0, 0, 0.25);
+  background: rgba(255, 0, 0, 0.05);
+}
+
+/* =========================
+   SMALL TEXT
+   ========================= */
+
+.small {
+  font-size: 14px;          /* ⬅️ slightly bigger small text */
+  color: var(--text-muted);
+}
+
+/* =========================
+   MICRO INTERACTIONS
+   ========================= */
+
+.card,
+.hero {
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+}

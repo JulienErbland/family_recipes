@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+import re
 
 from app.lib.session import init_session, is_logged_in
 from app.lib.repos import (
@@ -10,6 +11,7 @@ from app.lib.repos import (
 
 st.set_page_config(page_title="Browse", page_icon="📚", layout="wide")
 init_session()
+
 st.title("📚 Browse recipes")
 
 if not is_logged_in():
@@ -17,6 +19,21 @@ if not is_logged_in():
     st.stop()
 
 token = st.session_state.session.access_token
+
+
+def strip_trailing_id(s: str) -> str:
+    """Remove trailing ' (id)' patterns that might have been stored in names."""
+    if not s:
+        return ""
+    return re.sub(r"\s*\(([0-9a-fA-F-]{6,})\)\s*$", "", s).strip()
+
+
+def render_multiline(text: str):
+    """Preserve user newlines in Streamlit (Markdown line breaks)."""
+    if not text:
+        return
+    st.markdown(text.replace("\n", "  \n"))
+
 
 # =========================
 # Load data (efficiently)
@@ -35,8 +52,11 @@ for col in ["season", "servings", "prep_minutes", "cook_minutes", "total_minutes
     if col not in df_recipes.columns:
         df_recipes[col] = None
 
+# Clean recipe names (in case old data contains "(id)" suffix)
+df_recipes["name"] = df_recipes["name"].astype(str).apply(strip_trailing_id)
+
 # =========================
-# Creator names: id -> "First Last"
+# Creator names: id -> "First Last" (no UID fallback)
 # =========================
 creator_ids = sorted(df_recipes["created_by"].dropna().unique().tolist())
 profiles = list_profiles_by_ids(token, creator_ids)
@@ -46,9 +66,9 @@ for p in profiles:
     fn = (p.get("first_name") or "").strip()
     ln = (p.get("last_name") or "").strip()
     full = (fn + " " + ln).strip()
-    id_to_name[p["id"]] = full if full else p["id"]
+    id_to_name[p["id"]] = full if full else "Unknown"
 
-df_recipes["creator_name"] = df_recipes["created_by"].map(lambda uid: id_to_name.get(uid, uid))
+df_recipes["creator_name"] = df_recipes["created_by"].map(lambda uid: id_to_name.get(uid, "Unknown"))
 
 # =========================
 # Ingredients aggregation
@@ -57,7 +77,7 @@ df_links = pd.DataFrame(links)
 
 if not df_links.empty:
     # Nested ingredient name from PostgREST: ingredients(name)
-    df_links["ingredient_name"] = df_links["ingredients"].apply(lambda x: (x or {}).get("name", ""))
+    df_links["ingredient_name"] = df_links["ingredients"].apply(lambda x: strip_trailing_id((x or {}).get("name", "")))
 else:
     df_links = pd.DataFrame(columns=["recipe_id", "ingredient_name"])
 
@@ -142,18 +162,28 @@ df_display = df[cols].rename(columns={
 st.dataframe(df_display, width="stretch", hide_index=True)
 
 # =========================
-# Details panel
+# Details panel (NO IDs shown)
 # =========================
 st.divider()
 st.subheader("Details")
 
-# Use recipe ID to disambiguate duplicates
-label_to_id = {f"{row['name']} ({row['id'][:8]})": row["id"] for _, row in df.iterrows()}
-selected_label = st.selectbox("Select a recipe", ["(none)"] + list(label_to_id.keys()))
+# First selector: recipe name only
+recipe_names = df["name"].fillna("").tolist()
+selected_name = st.selectbox("Select a recipe", ["(none)"] + sorted(set(recipe_names)))
 
-if selected_label != "(none)":
-    recipe_id = label_to_id[selected_label]
-    row = df[df["id"] == recipe_id].iloc[0].to_dict()
+if selected_name != "(none)":
+    candidates = df[df["name"] == selected_name]
+
+    # If duplicates exist, disambiguate using creator name (still no IDs shown)
+    if len(candidates) > 1:
+        chosen_uid = st.selectbox(
+            "Which one?",
+            candidates["created_by"].tolist(),
+            format_func=lambda uid: id_to_name.get(uid, "Unknown"),
+        )
+        row = candidates[candidates["created_by"] == chosen_uid].iloc[0].to_dict()
+    else:
+        row = candidates.iloc[0].to_dict()
 
     st.markdown(f"### {row.get('name')}")
     st.write(f"Creator: **{row.get('creator_name','')}**")
@@ -169,16 +199,16 @@ if selected_label != "(none)":
 
     st.write("**Ingredients:**")
     for ing in row.get("ingredients", []):
-        st.write(f"- {ing}")
+        st.write(f"- {strip_trailing_id(ing)}")
 
     instructions = row.get("instructions")
     if instructions:
         st.write("**Instructions**")
-        st.write(instructions)
+        render_multiline(instructions)
     else:
         st.info("No instructions provided for this recipe.")
 
     notes = row.get("notes")
     if notes:
         st.write("**Notes**")
-        st.write(notes)
+        render_multiline(notes)

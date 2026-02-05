@@ -13,6 +13,7 @@ from app.lib.repos import (
 st.set_page_config(page_title="Add Recipe", page_icon="➕", layout="wide")
 init_session()
 
+
 st.title("➕ Add a recipe (with ingredients)")
 
 if not is_logged_in():
@@ -83,7 +84,7 @@ with left:
         new_name = st.text_input("New ingredient name")
 
     qty = st.text_input("Quantity (e.g., 200, 1/2)", key="qty")
-    unit = st.text_input("Unit (e.g., g, tbsp, cup)", key="unit")
+    unit = st.text_input("Unit (e.g., g, mL, spoon)", key="unit")
     comment = st.text_input("Comment (optional)", key="comment")
 
     add_line = st.button("➕ Add ingredient line")

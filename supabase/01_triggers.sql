@@ -19,12 +19,18 @@ for each row execute function public.set_updated_at();
 -- B) auto-create profile on signup
 -- Runs AFTER INSERT on auth.users
 -- Default role = 'reader'
+-- Copies first/last name from auth user metadata
 -- =========================
 create or replace function public.handle_new_user()
 returns trigger as $$
 begin
-  insert into public.profiles (id, role)
-  values (new.id, 'reader');
+  insert into public.profiles (id, role, first_name, last_name)
+  values (
+    new.id,
+    'reader',
+    nullif(trim(coalesce(new.raw_user_meta_data->>'first_name', '')), ''),
+    nullif(trim(coalesce(new.raw_user_meta_data->>'last_name', '')), '')
+  );
   return new;
 end;
 $$ language plpgsql security definer;
@@ -32,4 +38,4 @@ $$ language plpgsql security definer;
 drop trigger if exists on_auth_user_created on auth.users;
 create trigger on_auth_user_created
 after insert on auth.users
-for each row execute procedure public.handle_new_user();
+for each row execute function public.handle_new_user();

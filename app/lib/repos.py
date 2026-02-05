@@ -94,3 +94,41 @@ def list_profiles_by_ids(access_token: str, user_ids: List[str]) -> List[Dict]:
         .execute()
     )
     return res.data or []
+
+def list_my_recipes(access_token: str, user_id: str) -> List[Dict]:
+    sb = authed_postgrest(get_supabase(), access_token)
+    res = (
+        sb.table("recipes")
+        .select(
+            "id,name,season,servings,prep_minutes,cook_minutes,total_minutes,created_by,"
+            "instructions,notes,created_at,updated_at"
+        )
+        .eq("created_by", user_id)
+        .order("created_at", desc=True)
+        .execute()
+    )
+    return res.data or []
+
+def update_recipe(access_token: str, recipe_id: str, patch: Dict) -> Dict:
+    sb = authed_postgrest(get_supabase(), access_token)
+    allowed = {k: v for k, v in patch.items() if k in {
+        "name", "season", "servings", "prep_minutes", "cook_minutes", "instructions", "notes"
+    }}
+    res = sb.table("recipes").update(allowed).eq("id", recipe_id).execute()
+    return res.data[0] if res.data else {}
+
+def delete_recipe(access_token: str, recipe_id: str) -> bool:
+    sb = authed_postgrest(get_supabase(), access_token)
+    res = sb.table("recipes").delete().eq("id", recipe_id).execute()
+    return True
+
+def delete_recipe_ingredient_link(access_token: str, recipe_id: str, ingredient_id: str) -> bool:
+    sb = authed_postgrest(get_supabase(), access_token)
+    sb.table("recipe_ingredients").delete().eq("recipe_id", recipe_id).eq("ingredient_id", ingredient_id).execute()
+    return True
+
+def update_recipe_ingredient_link(access_token: str, recipe_id: str, ingredient_id: str, patch: Dict) -> bool:
+    sb = authed_postgrest(get_supabase(), access_token)
+    allowed = {k: v for k, v in patch.items() if k in {"quantity", "unit", "comment"}}
+    sb.table("recipe_ingredients").update(allowed).eq("recipe_id", recipe_id).eq("ingredient_id", ingredient_id).execute()
+    return True

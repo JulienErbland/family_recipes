@@ -1,6 +1,6 @@
 from typing import Optional, List, Dict
 from app.lib.supabase_client import get_supabase, authed_postgrest
-
+import streamlit as st
 
 def get_my_role(access_token: str, user_id: str) -> str:
     sb = authed_postgrest(get_supabase(), access_token)
@@ -173,3 +173,29 @@ def set_my_role(access_token: str, user_id: str, role: str) -> bool:
         .execute()
     )
     return True
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def cached_list_recipes(access_token: str) -> List[Dict]:
+    return list_recipes(access_token)
+
+@st.cache_data(ttl=60, show_spinner=False)
+def cached_list_recipe_ingredients(access_token: str) -> List[Dict]:
+    return list_recipe_ingredients(access_token)
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_list_ingredients(access_token: str) -> List[Dict]:
+    return list_ingredients(access_token)
+
+@st.cache_data(ttl=300, show_spinner=False)
+def cached_list_profiles_by_ids(access_token: str, user_ids: List[str]) -> List[Dict]:
+    # Convert list to tuple so Streamlit can hash it reliably
+    return list_profiles_by_ids(access_token, list(user_ids))
+
+@st.cache_data(ttl=60, show_spinner=False)
+def cached_list_my_recipes(access_token: str, user_id: str) -> List[Dict]:
+    return list_my_recipes(access_token, user_id)
+
+@st.cache_data(ttl=60, show_spinner=False)
+def cached_get_recipe_ingredients(access_token: str, recipe_id: str) -> List[Dict]:
+    return get_recipe_ingredients(access_token, recipe_id)

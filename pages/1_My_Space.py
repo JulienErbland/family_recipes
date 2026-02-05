@@ -6,7 +6,7 @@ import pandas as pd
 from app.lib.session import init_session, is_logged_in
 from app.lib.repos import (
     get_my_role,
-    list_my_recipes,
+    cached_list_my_recipes,
     update_recipe,
     delete_recipe,
     list_ingredients,
@@ -16,6 +16,7 @@ from app.lib.repos import (
     add_recipe_ingredient,
     delete_recipe_ingredient_link,
     update_recipe_ingredient_link,
+    cached_get_recipe_ingredients
 )
 from app.lib.ui import set_page_background, set_full_page_background
 
@@ -60,11 +61,7 @@ if not can_edit:
 
 # --------------------------------------------
 
-@st.cache_data(ttl=20)
-def load_my_recipes(tok: str, uid: str):
-    return list_my_recipes(tok, uid)
-
-recipes = load_my_recipes(token, user_id)
+recipes = cached_list_my_recipes(token, user_id)
 
 df_stats = pd.DataFrame(recipes)
 total = len(df_stats)
@@ -198,7 +195,7 @@ with left:
     st.markdown("<div class='card'>", unsafe_allow_html=True)
     st.subheader("🧂 Ingredients (manage)")
 
-    links = get_recipe_ingredients(token, recipe_id)
+    links = cached_get_recipe_ingredients(token, recipe_id)
 
     if not links:
         st.info("No ingredients linked yet.")
@@ -216,11 +213,13 @@ with left:
                 with b1:
                     if can_edit and st.button("Update", key=f"upd_{recipe_id}_{ing_id}", use_container_width=True):
                         update_recipe_ingredient_link(token, recipe_id, ing_id, {"quantity": q, "unit": u, "comment": c})
+                        st.cache_data.clear()
                         st.success("Updated ✅")
                         st.rerun()
                 with b2:
                     if can_edit and st.button("Remove", key=f"del_{recipe_id}_{ing_id}", use_container_width=True):
                         delete_recipe_ingredient_link(token, recipe_id, ing_id)
+                        st.cache_data.clear()
                         st.success("Removed ✅")
                         st.rerun()
 
@@ -268,6 +267,7 @@ with left:
             "unit": unit or None,
             "comment": comment or None,
         })
+        st.cache_data.clear()
         st.success("Ingredient linked ✅")
         st.rerun()
 

@@ -23,6 +23,8 @@ def _get_setting(name: str) -> str:
         )
     return val
 
+
+@st.cache_resource
 def get_supabase():
     url = _get_setting("SUPABASE_URL")
     key = _get_setting("SUPABASE_ANON_KEY")

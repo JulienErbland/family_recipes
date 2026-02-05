@@ -124,6 +124,7 @@ if st.session_state.role != "editor":
 
             # Update local state immediately
             st.session_state.role = "editor"
+            st.cache_data.clear()
             st.success("Upgraded to editor ✅")
             st.rerun()
 

@@ -7,7 +7,11 @@ from app.lib.repos import (
     list_recipes,
     list_recipe_ingredients,
     list_profiles_by_ids,
+    cached_list_recipes,
+    cached_list_recipe_ingredients,
+    cached_list_profiles_by_ids,
 )
+
 from app.lib.ui import set_page_background, set_full_page_background
 
 st.set_page_config(
@@ -52,8 +56,8 @@ def render_multiline(text: str):
 # =========================
 # Load data (efficiently)
 # =========================
-recipes = list_recipes(token)
-links = list_recipe_ingredients(token)
+recipes = cached_list_recipes(token)
+links = cached_list_recipe_ingredients(token)
 
 if not recipes:
     st.info("No recipes yet.")
@@ -72,8 +76,8 @@ df_recipes["name"] = df_recipes["name"].astype(str).apply(strip_trailing_id)
 # =========================
 # Creator names: id -> "First Last" (no UID fallback)
 # =========================
-creator_ids = sorted(df_recipes["created_by"].dropna().unique().tolist())
-profiles = list_profiles_by_ids(token, creator_ids)
+creator_ids = tuple(sorted(df_recipes["created_by"].dropna().unique().tolist()))
+profiles = cached_list_profiles_by_ids(token, creator_ids)
 
 id_to_name = {}
 for p in profiles:

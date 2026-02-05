@@ -214,8 +214,13 @@ if create_btn:
             "comment": line.get("comment"),
         })
 
-    st.success("Recipe + ingredients created ✅")
+    st.success("Recipe created ✅")
     st.write("Recipe id:", recipe_id)
+    # ✅ Invalidate cached SELECTs so Browse/My Space refresh immediately
+    st.cache_data.clear()
 
     # Reset ingredient list to avoid accidental duplicates on next create
     reset_ingredient_lines()
+
+    # Optional: rerun to reset UI fields + force fresh loads on this page too
+    st.rerun()

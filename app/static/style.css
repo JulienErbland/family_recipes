@@ -493,6 +493,35 @@ input, textarea, select {
   letter-spacing: .02em;
 }
 
+/* =========================
+   Browse page: readable Details panel
+   ========================= */
+
+/* The wrapper we add in the Python file */
+.details-panel {
+  background: rgba(255, 255, 255, 0.94) !important;
+  border: 1px solid rgba(0,0,0,.10) !important;
+  border-radius: 22px !important;
+  padding: 18px 18px !important;
+  box-shadow: 0 16px 38px rgba(0,0,0,.18) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+/* Force readable text inside */
+.details-panel,
+.details-panel * {
+  color: #1f1f1f !important;
+  text-shadow: none !important; /* your global shadow can reduce readability */
+}
+
+/* Make markdown headings inside look clean */
+.details-panel h1,
+.details-panel h2,
+.details-panel h3,
+.details-panel h4 {
+  text-shadow: none !important;
+}
 
 
 /* Hide Streamlit "running man" menu/footer if you want (optional)

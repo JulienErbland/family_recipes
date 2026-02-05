@@ -5,7 +5,6 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-
 import streamlit as st
 import pandas as pd
 import re
@@ -18,9 +17,7 @@ from app.lib.repos import (
     # NEW (Option A)
     cached_list_recipe_seasons,
 )
-
-from app.lib.ui import set_full_page_background
-from app.lib.ui import load_css
+from app.lib.ui import set_full_page_background, load_css
 from app.lib.brand import sidebar_brand
 
 st.set_page_config(
@@ -35,6 +32,54 @@ load_css()
 sidebar_brand()
 
 st.title("📚 Browse recipes")
+
+# ---- Readability CSS for Details panel ----
+st.markdown(
+    """
+    <style>
+      /* A readable "glass" panel for the details section */
+      .details-card {
+        background: rgba(255, 255, 255, 0.90);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        border: 1px solid rgba(0,0,0,0.08);
+        border-radius: 18px;
+        padding: 1.2rem 1.4rem;
+        box-shadow: 0 10px 28px rgba(0,0,0,0.18);
+        color: #111 !important;
+      }
+
+      /* Force text inside to be dark and readable */
+      .details-card * {
+        color: #111 !important;
+      }
+
+      /* Improve spacing + readability */
+      .details-meta {
+        margin-top: 0.25rem;
+        margin-bottom: 0.75rem;
+        font-size: 0.98rem;
+        line-height: 1.35;
+      }
+
+      .details-section-title {
+        margin-top: 1.0rem;
+        margin-bottom: 0.4rem;
+        font-weight: 700;
+      }
+
+      /* Make bullets slightly bigger */
+      .details-card ul {
+        margin-top: 0.25rem;
+        margin-bottom: 0.75rem;
+      }
+      .details-card li {
+        margin-bottom: 0.25rem;
+      }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.info(
     "How to browse recipes:\n"
@@ -233,7 +278,6 @@ elif sort_choice == "Total time (low→high)":
 else:
     df = df.sort_values("total_minutes", ascending=False)
 
-
 # =========================
 # Table view
 # =========================
@@ -243,7 +287,6 @@ def seasons_label(seasons):
     if set(seasons) == {"winter", "spring", "summer", "fall"}:
         return "All year"
     return ", ".join(seasons)
-
 
 cols = [
     "name",
@@ -271,7 +314,7 @@ df_display = df[cols].rename(columns={
 st.dataframe(df_display, width="stretch", hide_index=True)
 
 # =========================
-# Details panel (NO IDs shown)
+# Details panel (readable, no IDs shown)
 # =========================
 st.divider()
 st.subheader("Details")
@@ -292,12 +335,13 @@ if selected_name != "(none)":
     else:
         row = candidates.iloc[0].to_dict()
 
-    st.markdown(f"### {row.get('name')}")
+    # ✅ open wrapper
+    st.markdown("<div class='details-panel'>", unsafe_allow_html=True)
+
+    st.markdown(f"### {row.get('name','')}")
     st.write(f"Creator: **{row.get('creator_name','')}**")
-    st.write(f"Seasons: **{seasons_label(row['seasons'])}**")
-    st.write(
-        f"Servings: **{row.get('servings', 1)}**"
-    )
+    st.write(f"Seasons: **{seasons_label(row.get('seasons', []))}**")
+    st.write(f"Servings: **{row.get('servings', 1)}**")
     st.write(
         f"Prep: **{row.get('prep_minutes',0)}** | "
         f"Cook: **{row.get('cook_minutes',0)}** | "
@@ -305,7 +349,7 @@ if selected_name != "(none)":
     )
 
     st.write("**Ingredients:**")
-    for line in row.get("ingredients_lines", []):
+    for line in row.get("ingredients_lines", []) or []:
         st.write(f"- {line}")
 
     instructions = row.get("instructions")
@@ -319,3 +363,7 @@ if selected_name != "(none)":
     if notes:
         st.write("**Notes**")
         render_multiline(notes)
+
+    # ✅ close wrapper
+    st.markdown("</div>", unsafe_allow_html=True)
+

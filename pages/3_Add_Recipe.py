@@ -5,7 +5,6 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-
 import streamlit as st
 
 from app.lib.session import init_session, is_logged_in
@@ -16,12 +15,50 @@ from app.lib.repos import (
     find_ingredient_by_name,
     create_recipe,
     add_recipe_ingredient,
-    # NEW (Option A)
+    # Option A (join table)
     set_recipe_seasons,
 )
 from app.lib.ui import set_full_page_background, load_css
 from app.lib.brand import sidebar_brand
 
+
+# =========================
+# Helpers
+# =========================
+def normalize_single_row(obj):
+    """Supabase/PostgREST sometimes returns a list of rows. Normalize to dict."""
+    if isinstance(obj, list):
+        return obj[0] if obj else {}
+    return obj or {}
+
+
+def validate_before_create(recipe_name: str, seasons: list, ingredient_lines: list) -> list[str]:
+    """Return a list of human-readable problems. Empty list = ok."""
+    problems = []
+
+    if not (recipe_name or "").strip():
+        problems.append("Recipe name is required.")
+
+    if not seasons:
+        problems.append("Please select at least one season.")
+
+    if not ingredient_lines:
+        problems.append("Add at least one ingredient line.")
+    else:
+        # Check each ingredient line has a name
+        bad = [
+            i for i, ln in enumerate(ingredient_lines, start=1)
+            if not (ln.get("name") or "").strip()
+        ]
+        if bad:
+            problems.append(f"Ingredient line(s) missing a name: {', '.join(map(str, bad))}.")
+
+    return problems
+
+
+# =========================
+# Page setup
+# =========================
 st.set_page_config(
     page_title="Add Recipe",
     page_icon="➕",
@@ -34,6 +71,11 @@ load_css()
 sidebar_brand()
 
 st.title("➕ Add a recipe")
+
+# Flash success (survives rerun)
+if st.session_state.get("flash_success"):
+    st.success(st.session_state.pop("flash_success"))
+
 st.info(
     "How it works:\n"
     "- Fill in the **recipe details** (name, seasons, times, instructions).\n"
@@ -62,10 +104,14 @@ if st.session_state.role != "editor":
 # ---------- Session state for ingredient lines ----------
 st.session_state.setdefault("ingredient_lines", [])  # list[dict]
 
+
 def reset_ingredient_lines():
     st.session_state.ingredient_lines = []
 
-# ---------- Recipe form ----------
+
+# =========================
+# 1) Recipe form
+# =========================
 st.subheader("1) Recipe details")
 
 colA, colB, colC = st.columns([2, 1, 1])
@@ -94,7 +140,9 @@ notes = st.text_area("Notes", height=100)
 
 st.divider()
 
-# ---------- Ingredients UI ----------
+# =========================
+# 2) Ingredients UI
+# =========================
 st.subheader("2) Ingredients (add lines)")
 
 ingredients = list_ingredients(token)
@@ -104,7 +152,11 @@ name_to_id = {i["name"]: i["id"] for i in ingredients}
 left, right = st.columns([2, 1])
 
 with left:
-    mode = st.radio("Choose ingredient input mode", ["Select existing", "Create new"], horizontal=True)
+    mode = st.radio(
+        "Choose ingredient input mode",
+        ["Select existing", "Create new"],
+        horizontal=True
+    )
 
     if mode == "Select existing":
         if not existing_names:
@@ -169,78 +221,115 @@ if add_line:
 
 st.divider()
 
-# ---------- Create recipe (server-side writes) ----------
+# =========================
+# 3) Create (server-side writes)
+# =========================
 st.subheader("3) Create")
 
 create_btn = st.button("✅ Create recipe now")
 
 if create_btn:
-    if not name.strip():
-        st.error("Recipe name is required.")
+    # 0) Validate BEFORE any DB writes
+    problems = validate_before_create(name, seasons, st.session_state.ingredient_lines)
+    if problems:
+        st.warning("Please fix the following before creating the recipe:")
+        for p in problems:
+            st.write(f"- {p}")
         st.stop()
 
-    if not seasons:
-        st.error("Please select at least one season.")
+    created_recipe_id = None
+    seasons_set = False
+    linked_ingredients = []
+
+    # 1) Create recipe
+    try:
+        recipe = create_recipe(token, {
+            "name": name.strip(),
+            "prep_minutes": int(prep),
+            "cook_minutes": int(cook),
+            "instructions": instructions.strip() or None,
+            "notes": notes.strip() or None,
+            "created_by": user_id,  # required by your RLS policy
+        })
+    except Exception as e:
+        st.error("Could not create the recipe (database error).")
+        st.exception(e)
         st.stop()
 
-    if len(st.session_state.ingredient_lines) == 0:
-        st.error("Add at least one ingredient line.")
-        st.stop()
+    recipe = normalize_single_row(recipe)
+    created_recipe_id = recipe.get("id")
 
-    # 1) Create recipe (Option A: NO season field)
-    recipe = create_recipe(token, {
-        "name": name.strip(),
-        "prep_minutes": int(prep),
-        "cook_minutes": int(cook),
-        "instructions": instructions.strip() or None,
-        "notes": notes.strip() or None,
-        "created_by": user_id,  # required by your RLS policy
-    })
-
-    recipe_id = recipe.get("id")
-    if not recipe_id:
-        st.error("Recipe creation failed (no recipe id returned).")
+    if not created_recipe_id:
+        st.error("Recipe creation failed: no recipe id returned.")
+        st.code(repr(recipe))
         st.stop()
 
     # 2) Set seasons (Option A join table)
     try:
-        set_recipe_seasons(token, recipe_id, seasons)
+        set_recipe_seasons(token, created_recipe_id, seasons)
+        seasons_set = True
     except Exception as e:
-        st.error(f"Recipe created but setting seasons failed: {e}")
+        # DO NOT delete anything automatically
+        st.error("Recipe was created, but setting seasons failed.")
+        st.write("Nothing was deleted automatically.")
+        st.write(f"- Recipe record: ✅ created (id: {created_recipe_id})")
+        st.write("- Seasons: ❌ not set")
+        st.write("- Ingredient links: 0")
+        st.exception(e)
+        st.info("You can fix this in **My Space** by editing the recipe seasons.")
         st.stop()
 
     # 3) Ensure ingredients exist, then link
     cached_ids = dict(name_to_id)  # start with existing ids
 
-    for line in st.session_state.ingredient_lines:
-        ing_name = line["name"].strip()
+    try:
+        for line in st.session_state.ingredient_lines:
+            ing_name = (line.get("name") or "").strip()
+            if not ing_name:
+                raise RuntimeError("One ingredient line is missing a name.")
 
-        ing_id = cached_ids.get(ing_name)
-        if not ing_id:
-            # Try create; if already exists, fetch it
-            try:
-                created = create_ingredient(token, ing_name)
-                ing_id = created.get("id")
-            except Exception:
-                existing = find_ingredient_by_name(token, ing_name)
-                ing_id = existing.get("id") if existing else None
-
+            ing_id = cached_ids.get(ing_name)
             if not ing_id:
-                st.error(f"Could not create or find ingredient: {ing_name}")
-                st.stop()
+                # Try create; if already exists, fetch it
+                try:
+                    created = create_ingredient(token, ing_name)
+                    created = normalize_single_row(created)
+                    ing_id = created.get("id")
+                except Exception:
+                    existing = find_ingredient_by_name(token, ing_name)
+                    existing = normalize_single_row(existing)
+                    ing_id = existing.get("id") if existing else None
 
-            cached_ids[ing_name] = ing_id
+                if not ing_id:
+                    raise RuntimeError(f"Could not create or find ingredient: '{ing_name}'")
 
-        add_recipe_ingredient(token, {
-            "recipe_id": recipe_id,
-            "ingredient_id": ing_id,
-            "quantity": line.get("quantity"),
-            "unit": line.get("unit"),
-            "comment": line.get("comment"),
-        })
+                cached_ids[ing_name] = ing_id
 
+            add_recipe_ingredient(token, {
+                "recipe_id": created_recipe_id,
+                "ingredient_id": ing_id,
+                "quantity": line.get("quantity"),
+                "unit": line.get("unit"),
+                "comment": line.get("comment"),
+            })
+            linked_ingredients.append(ing_name)
+
+    except Exception as e:
+        # DO NOT delete anything automatically
+        st.error("Recipe creation did not fully complete (ingredients step).")
+        st.write("Nothing was deleted automatically. Here’s what succeeded:")
+        st.write(f"- Recipe record: ✅ created (id: {created_recipe_id})")
+        st.write(f"- Seasons: {'✅ set' if seasons_set else '❌ not set'}")
+        st.write(f"- Ingredient links created: {len(linked_ingredients)}")
+        if linked_ingredients:
+            st.write(f"  - Linked: {', '.join(linked_ingredients)}")
+        st.write("Error details:")
+        st.exception(e)
+        st.info("Fix the issue and edit the recipe in **My Space** to finish linking ingredients.")
+        st.stop()
+
+    # Success
     st.cache_data.clear()
-    st.success("Recipe created ✅")
-
+    st.session_state.flash_success = "Recipe created ✅"
     reset_ingredient_lines()
     st.rerun()

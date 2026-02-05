@@ -73,8 +73,8 @@ if not is_logged_in():
 token = st.session_state.session.access_token
 user_id = st.session_state.session.user.id
 
-# Make sure profile exists (safety net)
 ensure_my_profile(token, user_id)
+st.session_state.role = get_my_role(token, user_id)
 
 # Now safely read role
 if "role" not in st.session_state or st.session_state.role is None:
@@ -93,8 +93,13 @@ st.markdown(
 
 st.write("")
 
+def get_secret(name: str, default: str = "") -> str:
+    try:
+        return str(st.secrets.get(name, default))
+    except Exception:
+        return os.getenv(name, default)
 
-EDITOR_CODE = st.secrets.get("EDITOR_INVITE_CODE", os.getenv("EDITOR_INVITE_CODE", ""))
+EDITOR_CODE = get_secret("EDITOR_INVITE_CODE", "")
 
 
 # Show editor upgrade UI only for non-editors

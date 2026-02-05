@@ -47,7 +47,7 @@ token = st.session_state.session.access_token
 user = st.session_state.session.user
 user_id = user.id
 
-role = get_my_role(token) or "reader"
+role = st.session_state.role = get_my_role(token, user_id)
 can_edit = (role == "editor")
 
 st.markdown(f"<span class='badge'>Signed in as: {user.email}</span> <span class='badge'>Role: {role}</span>", unsafe_allow_html=True)

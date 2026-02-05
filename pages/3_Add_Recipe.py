@@ -40,7 +40,7 @@ user_id = st.session_state.user.id
 
 # Load role if needed
 if st.session_state.role is None:
-    st.session_state.role = get_my_role(token)
+    st.session_state.role = get_my_role(token, user_id)
 
 if st.session_state.role != "editor":
     st.error("You are read-only (reader). You can't add recipes.")

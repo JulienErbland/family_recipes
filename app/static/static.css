@@ -1,0 +1,320 @@
+/* =========================================================
+   La cuisine de la Madre — Colorful Theme (Streamlit)
+   ========================================================= */
+
+/* -------------------------
+   1) Palette + tokens
+   ------------------------- */
+:root{
+  /* Backgrounds */
+  --bg: #fff2e1;                 /* warm peach-cream */
+  --bg2: #fff8f0;                /* softer cream */
+  --card: rgba(255,255,255,.78);
+  --card-strong: rgba(255,255,255,.92);
+
+  /* Text */
+  --text: #1f1f1f;
+  --muted: rgba(0,0,0,.62);
+
+  /* Borders + shadows */
+  --border: rgba(0,0,0,.10);
+  --shadow: 0 12px 32px rgba(0,0,0,.10);
+  --shadow-hover: 0 18px 46px rgba(0,0,0,.14);
+
+  /* Brand accents (colorful but not neon) */
+  --accent:  #ff4d6d;            /* coral-rose */
+  --accent2: #ffb703;            /* mango */
+  --accent3: #00b894;            /* mint */
+  --accent4: #3a86ff;            /* bright blue */
+  --accent5: #7c3aed;            /* violet */
+
+  /* Radii */
+  --radius: 22px;
+  --radius-sm: 14px;
+}
+
+/* -------------------------
+   2) Global base
+   ------------------------- */
+html, body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+/* Streamlit app container */
+.stApp {
+  background: radial-gradient(circle at 12% 8%, rgba(255,77,109,.14), transparent 40%),
+              radial-gradient(circle at 85% 18%, rgba(255,183,3,.16), transparent 42%),
+              radial-gradient(circle at 15% 85%, rgba(0,184,148,.12), transparent 45%),
+              radial-gradient(circle at 88% 80%, rgba(58,134,255,.12), transparent 46%),
+              var(--bg);
+  color: var(--text);
+}
+
+/* Main page padding + fade-in */
+.block-container {
+  padding-top: 1.4rem;
+  padding-bottom: 2rem;
+  animation: fadeIn .35s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Basic text */
+.stMarkdown, .stText, p, li, label, span {
+  color: var(--text);
+}
+
+/* Captions / muted text */
+.stCaption, .stAlert p, .stMarkdown small {
+  color: var(--muted) !important;
+}
+
+/* Remove some harsh default spacing */
+h1, h2, h3 {
+  letter-spacing: -0.01em;
+}
+
+/* -------------------------
+   3) Sidebar styling
+   ------------------------- */
+section[data-testid="stSidebar"] {
+  background: linear-gradient(
+      180deg,
+      rgba(255,255,255,.70),
+      rgba(255,255,255,.52)
+  );
+  border-right: 1px solid var(--border);
+}
+
+section[data-testid="stSidebar"] .block-container{
+  padding-top: 1.1rem;
+}
+
+/* Brand block (used by your sidebar_brand HTML) */
+.sidebar-brand{
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 8px 14px;
+  margin-bottom: 6px;
+}
+
+.sidebar-brand img{
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  box-shadow: 0 10px 20px rgba(0,0,0,.12);
+}
+
+.sidebar-brand .title{
+  font-weight: 800;
+  line-height: 1.1;
+  font-size: 1.02rem;
+}
+
+.sidebar-brand .subtitle{
+  color: var(--muted);
+  font-size: .86rem;
+}
+
+/* -------------------------
+   4) Hero section
+   ------------------------- */
+.hero{
+  background: linear-gradient(
+    135deg,
+    rgba(255,77,109,.22),
+    rgba(255,183,3,.18),
+    rgba(0,184,148,.16),
+    rgba(58,134,255,.14)
+  );
+  border: 1px solid var(--border);
+  border-radius: calc(var(--radius) + 6px);
+  padding: 22px 22px;
+  box-shadow: var(--shadow);
+  position: relative;
+  overflow: hidden;
+}
+
+.hero:before{
+  content: "";
+  position: absolute;
+  inset: -40px;
+  background: radial-gradient(circle at 20% 20%, rgba(255,255,255,.35), transparent 40%),
+              radial-gradient(circle at 80% 40%, rgba(255,255,255,.25), transparent 42%);
+  pointer-events: none;
+}
+
+/* -------------------------
+   5) Cards + hover
+   ------------------------- */
+.card{
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 18px 18px;
+  backdrop-filter: blur(8px);
+  transform: translateY(0);
+  transition: transform .18s ease, box-shadow .18s ease, filter .18s ease;
+}
+
+.card:hover{
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-hover);
+  filter: saturate(1.02);
+}
+
+.card h3{
+  margin: 0 0 8px;
+  font-size: 1.05rem;
+}
+
+.card p{
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+/* -------------------------
+   6) Badges + Chips
+   ------------------------- */
+.badge{
+  display: inline-block;
+  padding: 7px 11px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card-strong);
+  font-size: .86rem;
+  color: rgba(0,0,0,.66);
+  margin-right: 8px;
+  margin-bottom: 8px;
+}
+
+/* Chips: colorful but readable */
+.chip{
+  display: inline-block;
+  padding: 6px 11px;
+  border-radius: 999px;
+  border: 1px solid rgba(255,183,3,.28);
+  background: rgba(255,183,3,.18);
+  color: rgba(0,0,0,.72);
+  font-size: .84rem;
+  margin-right: 6px;
+  margin-bottom: 6px;
+  transition: transform .14s ease, filter .14s ease;
+}
+
+.chip:hover{
+  transform: translateY(-1px);
+  filter: brightness(1.02);
+}
+
+/* Variants if you want (optional classes you can use later) */
+.chip.green{ border-color: rgba(0,184,148,.28); background: rgba(0,184,148,.14); }
+.chip.blue { border-color: rgba(58,134,255,.28); background: rgba(58,134,255,.14); }
+.chip.pink { border-color: rgba(255,77,109,.28); background: rgba(255,77,109,.14); }
+.chip.violet{ border-color: rgba(124,58,237,.22); background: rgba(124,58,237,.12); }
+
+/* -------------------------
+   7) Buttons (best effort)
+   ------------------------- */
+.stButton > button{
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  color: #ffffff !important;
+  border: 0 !important;
+  border-radius: 14px !important;
+  padding: 0.65rem 1rem !important;
+  font-weight: 700 !important;
+  box-shadow: 0 12px 26px rgba(255,77,109,.22);
+  transition: transform .15s ease, filter .15s ease, box-shadow .15s ease;
+}
+
+.stButton > button:hover{
+  transform: translateY(-1px);
+  filter: brightness(1.03);
+  box-shadow: 0 16px 32px rgba(255,77,109,.26);
+}
+
+.stButton > button:active{
+  transform: translateY(0px);
+}
+
+/* Secondary button look (wrap in a container div with class "btn-secondary" if you want later) */
+.btn-secondary .stButton > button{
+  background: linear-gradient(135deg, rgba(58,134,255,.95), rgba(0,184,148,.95));
+  box-shadow: 0 12px 26px rgba(58,134,255,.18);
+}
+
+/* -------------------------
+   8) Inputs (text/select/area)
+   ------------------------- */
+.stTextInput input,
+.stNumberInput input,
+.stTextArea textarea {
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid rgba(0,0,0,.12) !important;
+  background: rgba(255,255,255,.82) !important;
+}
+
+.stSelectbox div[data-baseweb="select"] > div{
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid rgba(0,0,0,.12) !important;
+  background: rgba(255,255,255,.82) !important;
+}
+
+/* Focus ring */
+.stTextInput input:focus,
+.stNumberInput input:focus,
+.stTextArea textarea:focus {
+  outline: none !important;
+  border: 1px solid rgba(255,77,109,.55) !important;
+  box-shadow: 0 0 0 4px rgba(255,77,109,.15) !important;
+}
+
+/* -------------------------
+   9) Dataframe container (subtle polish)
+   ------------------------- */
+div[data-testid="stDataFrame"]{
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 10px 24px rgba(0,0,0,.06);
+}
+
+/* -------------------------
+   10) Expander polish
+   ------------------------- */
+details{
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.72);
+  padding: 8px 12px;
+}
+
+details summary{
+  cursor: pointer;
+  font-weight: 700;
+}
+
+/* -------------------------
+   11) Small tweaks
+   ------------------------- */
+
+/* Reduce harsh divider */
+hr{
+  border: none;
+  height: 1px;
+  background: rgba(0,0,0,.08);
+}
+
+/* Hide Streamlit "running man" menu/footer if you want (optional)
+#MainMenu { visibility: hidden; }
+footer { visibility: hidden; }
+header { visibility: hidden; }
+*/

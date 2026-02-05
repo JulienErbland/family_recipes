@@ -12,6 +12,13 @@ from app.lib.repos import (
 st.set_page_config(page_title="Browse", page_icon="📚", layout="wide")
 init_session()
 
+from app.lib.ui import load_css
+load_css()
+
+from app.lib.brand import sidebar_brand
+sidebar_brand()
+
+
 st.title("📚 Browse recipes")
 
 if not is_logged_in():
@@ -75,20 +82,50 @@ df_recipes["creator_name"] = df_recipes["created_by"].map(lambda uid: id_to_name
 # =========================
 df_links = pd.DataFrame(links)
 
-if not df_links.empty:
-    # Nested ingredient name from PostgREST: ingredients(name)
-    df_links["ingredient_name"] = df_links["ingredients"].apply(lambda x: strip_trailing_id((x or {}).get("name", "")))
-else:
-    df_links = pd.DataFrame(columns=["recipe_id", "ingredient_name"])
+def safe_str(x):
+    return (x or "").strip() if isinstance(x, str) else x
 
+def fmt_line(row) -> str:
+    ing_name = strip_trailing_id(((row.get("ingredients") or {}).get("name", "")))
+    qty = safe_str(row.get("quantity"))
+    unit = safe_str(row.get("unit"))
+    comment = safe_str(row.get("comment"))
+
+    left = " ".join([str(x) for x in [qty, unit] if x not in [None, "", "None"]]).strip()
+    base = f"{left} — {ing_name}" if left else ing_name
+    if comment:
+        base = f"{base} ({comment})"
+    return base
+
+if not df_links.empty:
+    # ✅ for filtering
+    df_links["ingredient_name"] = df_links["ingredients"].apply(
+        lambda x: strip_trailing_id((x or {}).get("name", ""))
+    )
+    # ✅ for display (quantity/unit/comment)
+    df_links["ingredient_line"] = df_links.apply(fmt_line, axis=1)
+else:
+    df_links = pd.DataFrame(columns=["recipe_id", "ingredient_name", "ingredient_line"])
+
+# For table preview (compact)
 ingredients_by_recipe = (
     df_links.groupby("recipe_id")["ingredient_name"]
     .apply(lambda s: sorted(set([x for x in s if x])))
     .to_dict()
 )
 
+# For details view (with quantities)
+ingredient_lines_by_recipe = (
+    df_links.groupby("recipe_id")["ingredient_line"]
+    .apply(lambda s: [x for x in s.tolist() if x])
+    .to_dict()
+)
+
 df_recipes["ingredients"] = df_recipes["id"].map(lambda rid: ingredients_by_recipe.get(rid, []))
+df_recipes["ingredients_lines"] = df_recipes["id"].map(lambda rid: ingredient_lines_by_recipe.get(rid, []))
 df_recipes["ingredients_str"] = df_recipes["ingredients"].map(lambda xs: ", ".join(xs))
+
+
 
 # =========================
 # Filters UI
@@ -108,6 +145,9 @@ creator_choice = st.sidebar.selectbox("Creator", ["(any)"] + creator_names)
 all_ingredients = sorted(df_links["ingredient_name"].dropna().unique().tolist())
 chosen_ingredients = st.sidebar.multiselect("Ingredients", all_ingredients)
 match_mode = st.sidebar.radio("Ingredient match", ["Contains ANY", "Contains ALL"])
+
+
+
 
 # =========================
 # Apply filters
@@ -130,6 +170,20 @@ if chosen_ingredients:
         return chosen_set.issubset(ing_set)
 
     df = df[df["ingredients"].apply(matches)]
+
+
+search = st.sidebar.text_input("Search recipe name")
+sort_choice = st.sidebar.selectbox("Sort by", ["Name (A→Z)", "Total time (low→high)", "Total time (high→low)"])
+
+if search.strip():
+    df = df[df["name"].str.contains(search.strip(), case=False, na=False)]
+
+if sort_choice == "Name (A→Z)":
+    df = df.sort_values("name")
+elif sort_choice == "Total time (low→high)":
+    df = df.sort_values("total_minutes")
+else:
+    df = df.sort_values("total_minutes", ascending=False)
 
 # =========================
 # Table view
@@ -171,6 +225,9 @@ st.subheader("Details")
 recipe_names = df["name"].fillna("").tolist()
 selected_name = st.selectbox("Select a recipe", ["(none)"] + sorted(set(recipe_names)))
 
+
+
+
 if selected_name != "(none)":
     candidates = df[df["name"] == selected_name]
 
@@ -198,8 +255,10 @@ if selected_name != "(none)":
     )
 
     st.write("**Ingredients:**")
-    for ing in row.get("ingredients", []):
-        st.write(f"- {strip_trailing_id(ing)}")
+    for line in row.get("ingredients_lines", []):
+        st.write(f"- {line}")
+
+
 
     instructions = row.get("instructions")
     if instructions:

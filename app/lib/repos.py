@@ -132,3 +132,13 @@ def update_recipe_ingredient_link(access_token: str, recipe_id: str, ingredient_
     allowed = {k: v for k, v in patch.items() if k in {"quantity", "unit", "comment"}}
     sb.table("recipe_ingredients").update(allowed).eq("recipe_id", recipe_id).eq("ingredient_id", ingredient_id).execute()
     return True
+
+def set_my_role(access_token: str, user_id: str, role: str) -> bool:
+    sb = authed_postgrest(get_supabase(), access_token)
+    res = (
+        sb.table("profiles")
+        .update({"role": role})
+        .eq("id", user_id)
+        .execute()
+    )
+    return True

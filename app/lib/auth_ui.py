@@ -40,9 +40,9 @@ def auth_sidebar():
 
     with tab_signup:
         first_name = st.text_input("First name", key="signup_first_name")
-        last_name = st.text_input("Last name", key="signup_last_name")
+        last_name  = st.text_input("Last name",  key="signup_last_name")
         signup_email = st.text_input("Email", key="signup_email")
-        signup_pw = st.text_input("Password", type="password", key="signup_pw")
+        signup_pw  = st.text_input("Password", type="password", key="signup_pw")
         signup_pw2 = st.text_input("Confirm password", type="password", key="signup_pw2")
 
         if st.button("Create account", key="signup_btn"):
@@ -53,31 +53,33 @@ def auth_sidebar():
             if not fn or not ln:
                 st.error("Please enter your first name and last name.")
                 st.stop()
-
             if not em:
                 st.error("Please enter your email.")
                 st.stop()
-
             if not signup_pw:
                 st.error("Please enter a password.")
                 st.stop()
-
             if signup_pw != signup_pw2:
                 st.error("Passwords do not match.")
                 st.stop()
 
             try:
-                # Store first/last name in auth user metadata so your DB trigger can copy it into public.profiles
-                sb.auth.sign_up({
+                res = sb.auth.sign_up({
                     "email": em,
                     "password": signup_pw,
                     "options": {
-                        "data": {
-                            "first_name": fn,
-                            "last_name": ln,
-                        }
+                        "data": {"first_name": fn, "last_name": ln}
                     }
                 })
-                st.success("Account created. Check your email to confirm (if confirmation is enabled).")
+
+                # ✅ Auto-login if Supabase returns a session (email confirmation OFF)
+                if getattr(res, "session", None):
+                    st.session_state.session = res.session
+                    st.session_state.user = res.user
+                    st.success("Account created — logged in ✅")
+                    st.rerun()
+
+                # Email confirmation ON → no session yet
+                st.success("Account created. Please check your email to confirm, then log in.")
             except AuthApiError as e:
                 st.error(f"Sign up failed: {str(e)}")

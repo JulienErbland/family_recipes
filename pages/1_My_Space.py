@@ -1,6 +1,10 @@
 import streamlit as st
 import pandas as pd
 
+import os
+from app.lib.repos import set_my_role
+
+
 from app.lib.session import init_session, is_logged_in
 from app.lib.repos import (
     get_my_role,
@@ -17,6 +21,12 @@ from app.lib.repos import (
 )
 st.set_page_config(page_title="My Space • Les recettes de la Madre", page_icon="👤", layout="wide")
 init_session()
+
+from app.lib.ui import load_css
+load_css()
+
+from app.lib.brand import sidebar_brand
+sidebar_brand()
 
 
 st.title("👤 My Space")
@@ -40,6 +50,29 @@ st.write("")
 if not can_edit:
     st.info("You are a **reader**. You can browse recipes, but only **editors** can edit or delete.")
     # Still show their recipes read-only
+
+EDITOR_CODE = os.getenv("EDITOR_INVITE_CODE", "")
+
+if role != "editor":
+    with st.expander("🔑 Become an editor"):
+        st.write("If you have the family editor code, enter it to unlock editing.")
+        code = st.text_input("Editor code", type="password")
+
+        if st.button("Upgrade to editor", use_container_width=True):
+            if not EDITOR_CODE:
+                st.error("Editor code is not configured on the server.")
+                st.stop()
+
+            if code.strip() != EDITOR_CODE:
+                st.error("Wrong code.")
+                st.stop()
+
+            set_my_role(token, user_id, "editor")
+            st.session_state.role = "editor"
+            st.success("Upgraded to editor ✅")
+            st.cache_data.clear()
+            st.rerun()
+
 # --------------------------------------------
 
 @st.cache_data(ttl=20)
@@ -47,6 +80,17 @@ def load_my_recipes(tok: str, uid: str):
     return list_my_recipes(tok, uid)
 
 recipes = load_my_recipes(token, user_id)
+
+df_stats = pd.DataFrame(recipes)
+total = len(df_stats)
+avg_time = int(df_stats["total_minutes"].dropna().astype(int).mean()) if "total_minutes" in df_stats else 0
+
+st.markdown(
+    f"<span class='badge'>My recipes: {total}</span>"
+    f"<span class='badge'>Avg total time: {avg_time} min</span>",
+    unsafe_allow_html=True
+)
+
 
 top_left, top_right = st.columns([3, 1])
 with top_left:
@@ -265,7 +309,7 @@ with right:
 
     if row.get("instructions"):
         st.markdown("**Instructions**")
-        st.write(row["instructions"])
+        st.markdown(row["instructions"].replace("\n", "  \n"))
     if row.get("notes"):
         st.markdown("**Notes**")
         st.write(row["notes"])

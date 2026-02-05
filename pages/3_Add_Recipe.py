@@ -13,8 +13,15 @@ from app.lib.repos import (
 st.set_page_config(page_title="Add Recipe", page_icon="➕", layout="wide")
 init_session()
 
+from app.lib.ui import load_css
+load_css()
 
-st.title("➕ Add a recipe (with ingredients)")
+from app.lib.brand import sidebar_brand
+sidebar_brand()
+
+
+
+st.title("➕ Add a recipe")
 
 if not is_logged_in():
     st.warning("Please log in via Home.")

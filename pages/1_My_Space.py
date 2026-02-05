@@ -25,7 +25,7 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
-set_full_page_background("app/static/bg_my_space.png")
+set_full_page_background("app/static/bg_my_space.jpg")
 init_session()
 
 from app.lib.ui import load_css

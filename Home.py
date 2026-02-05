@@ -23,7 +23,7 @@ st.set_page_config(
 #set_page_background("app/static/bg_home.png", "bg-home")
 #st.markdown("<div class='bg-home'>", unsafe_allow_html=True)
 
-set_full_page_background("app/static/bg_home.png")
+set_full_page_background("app/static/bg_home.jpg")
 
 init_session()
 load_css()

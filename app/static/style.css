@@ -606,6 +606,58 @@ div[data-testid="stTabs"] {
   border: 1px solid rgba(0,0,0,.08) !important;
 }
 
+/* =========================================================
+   FIX: Widget buttons (NumberInput +/-) getting ugly / dark
+   Put this at the VERY BOTTOM of style.css
+   ========================================================= */
+
+/* 1) Force all Streamlit buttons to layout normally (prevents vertical letters) */
+.stButton > button{
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;      /* no letter-by-letter wrapping */
+  word-break: normal !important;
+  overflow-wrap: normal !important;
+  line-height: 1.15 !important;
+}
+
+/* If you use use_container_width=True often, keep it full width */
+.stButton > button[kind="primary"],
+.stButton > button[kind="secondary"]{
+  width: 100% !important;
+}
+
+/* 2) IMPORTANT: Reset the +/- stepper buttons inside number inputs */
+div[data-testid="stNumberInput"] button{
+  background: rgba(255,255,255,.90) !important;
+  color: #1f1f1f !important;
+  border: 1px solid rgba(0,0,0,.12) !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  padding: 0.25rem 0.55rem !important;
+  min-width: 38px !important;
+  height: 34px !important;
+}
+
+/* Hover/active states for +/- */
+div[data-testid="stNumberInput"] button:hover{
+  filter: brightness(1.02) !important;
+}
+
+div[data-testid="stNumberInput"] button:active{
+  transform: translateY(0) !important;
+}
+
+/* 3) Make sure the number input field itself stays clean */
+div[data-testid="stNumberInput"] input{
+  background: rgba(255,255,255,.90) !important;
+  color: #1f1f1f !important;
+  border: 1px solid rgba(0,0,0,.12) !important;
+  border-radius: 14px !important;
+}
+
+
 
 /* Hide Streamlit "running man" menu/footer if you want (optional)
 #MainMenu { visibility: hidden; }

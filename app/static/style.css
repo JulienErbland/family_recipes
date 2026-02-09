@@ -606,6 +606,7 @@ div[data-testid="stTabs"] {
   border: 1px solid rgba(0,0,0,.08) !important;
 }
 
+
 /* Hide Streamlit "running man" menu/footer if you want (optional)
 #MainMenu { visibility: hidden; }
 footer { visibility: hidden; }

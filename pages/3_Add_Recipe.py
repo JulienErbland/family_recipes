@@ -45,7 +45,6 @@ def validate_before_create(recipe_name: str, seasons: list, ingredient_lines: li
     if not ingredient_lines:
         problems.append("Add at least one ingredient line.")
     else:
-        # Check each ingredient line has a name
         bad = [
             i for i, ln in enumerate(ingredient_lines, start=1)
             if not (ln.get("name") or "").strip()
@@ -78,7 +77,7 @@ if st.session_state.get("flash_success"):
 
 st.info(
     "How it works:\n"
-    "- Fill in the **recipe details** (name, seasons, times, instructions).\n"
+    "- Fill in the **recipe details** (name, seasons, servings, times, instructions).\n"
     "- Add your **ingredients line by line** (quantity + unit + optional comment).\n"
     "- For each ingredient, you can either **select an existing one** from the list, "
     "or **create a new ingredient** if it doesn’t exist yet.\n"
@@ -129,10 +128,13 @@ with colB:
 with colC:
     st.caption("Total time is computed automatically (prep + cook).")
 
-col1, col2 = st.columns(2)
-with col1:
+# ✅ Servings + Prep + Cook in one row
+colS, colP, colK = st.columns(3)
+with colS:
+    servings = st.number_input("Servings", min_value=1, step=1, value=4)
+with colP:
     prep = st.number_input("Prep time (minutes)", min_value=0, step=5, value=0)
-with col2:
+with colK:
     cook = st.number_input("Cook time (minutes)", min_value=0, step=5, value=0)
 
 instructions = st.text_area("Instructions", height=180)
@@ -245,6 +247,7 @@ if create_btn:
     try:
         recipe = create_recipe(token, {
             "name": name.strip(),
+            "servings": int(servings),  # ✅ NEW
             "prep_minutes": int(prep),
             "cook_minutes": int(cook),
             "instructions": instructions.strip() or None,
@@ -269,7 +272,6 @@ if create_btn:
         set_recipe_seasons(token, created_recipe_id, seasons)
         seasons_set = True
     except Exception as e:
-        # DO NOT delete anything automatically
         st.error("Recipe was created, but setting seasons failed.")
         st.write("Nothing was deleted automatically.")
         st.write(f"- Recipe record: ✅ created (id: {created_recipe_id})")
@@ -280,7 +282,7 @@ if create_btn:
         st.stop()
 
     # 3) Ensure ingredients exist, then link
-    cached_ids = dict(name_to_id)  # start with existing ids
+    cached_ids = dict(name_to_id)
 
     try:
         for line in st.session_state.ingredient_lines:
@@ -290,7 +292,6 @@ if create_btn:
 
             ing_id = cached_ids.get(ing_name)
             if not ing_id:
-                # Try create; if already exists, fetch it
                 try:
                     created = create_ingredient(token, ing_name)
                     created = normalize_single_row(created)
@@ -315,7 +316,6 @@ if create_btn:
             linked_ingredients.append(ing_name)
 
     except Exception as e:
-        # DO NOT delete anything automatically
         st.error("Recipe creation did not fully complete (ingredients step).")
         st.write("Nothing was deleted automatically. Here’s what succeeded:")
         st.write(f"- Recipe record: ✅ created (id: {created_recipe_id})")

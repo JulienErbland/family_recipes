@@ -564,6 +564,47 @@ div[data-testid="stVerticalBlockBorderWrapper"] *{
   text-shadow: none !important;
 }
 
+/* =========================================================
+   PATCH: Fix Streamlit bordered containers (My Space panels)
+   Put this at the VERY END of style.css
+   ========================================================= */
+
+/* Streamlit sometimes uses SECTION instead of DIV */
+div[data-testid="stVerticalBlockBorderWrapper"],
+section[data-testid="stVerticalBlockBorderWrapper"],
+div.stVerticalBlockBorderWrapper,
+section.stVerticalBlockBorderWrapper {
+  background: rgba(255,255,255,.92) !important;
+  border: 1px solid rgba(0,0,0,.08) !important;
+  border-radius: 22px !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.14) !important;
+  overflow: hidden !important;
+}
+
+/* Padding can be 1 or 2 levels deep depending on Streamlit version */
+div[data-testid="stVerticalBlockBorderWrapper"] > div,
+section[data-testid="stVerticalBlockBorderWrapper"] > div,
+div[data-testid="stVerticalBlockBorderWrapper"] > div > div,
+section[data-testid="stVerticalBlockBorderWrapper"] > div > div {
+  padding: 18px 18px !important;
+}
+
+/* Kill global text shadows inside bordered containers (clean white card look) */
+div[data-testid="stVerticalBlockBorderWrapper"] *,
+section[data-testid="stVerticalBlockBorderWrapper"] * {
+  color: #1f1f1f !important;
+  text-shadow: none !important;
+}
+
+/* Tabs often float on the background: give the whole tabs block a soft panel */
+div[data-testid="stTabs"] {
+  background: rgba(255,255,255,.55) !important;
+  border-radius: 22px !important;
+  padding: 10px 10px !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(0,0,0,.08) !important;
+}
 
 /* Hide Streamlit "running man" menu/footer if you want (optional)
 #MainMenu { visibility: hidden; }

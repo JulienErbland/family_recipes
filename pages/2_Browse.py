@@ -8,13 +8,13 @@ if str(ROOT) not in sys.path:
 import streamlit as st
 import pandas as pd
 import re
+import html
 
 from app.lib.session import init_session, is_logged_in
 from app.lib.repos import (
     cached_list_recipes,
     cached_list_recipe_ingredients,
     cached_list_profiles_by_ids,
-    # NEW (Option A)
     cached_list_recipe_seasons,
 )
 from app.lib.ui import set_full_page_background, load_css
@@ -37,24 +37,36 @@ st.title("📚 Browse recipes")
 st.markdown(
     """
     <style>
-      /* A readable "glass" panel for the details section */
-      .details-card {
-        background: rgba(255, 255, 255, 0.90);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
-        border: 1px solid rgba(0,0,0,0.08);
-        border-radius: 18px;
-        padding: 1.2rem 1.4rem;
-        box-shadow: 0 10px 28px rgba(0,0,0,0.18);
-        color: #111 !important;
+      /* Details header "chip" */
+      .details-title{
+        display: inline-block;
+        background: rgba(255, 255, 255, 0.92);
+        padding: 10px 16px;
+        border-radius: 14px;
+        font-size: 1.35rem;
+        font-weight: 900;
+        margin-bottom: 10px;
+        box-shadow: 0 8px 20px rgba(0,0,0,.18);
+        color: #1f1f1f;
       }
 
-      /* Force text inside to be dark and readable */
-      .details-card * {
-        color: #111 !important;
+      /* The main details panel */
+      .details-panel {
+        background: rgba(255, 255, 255, 0.94);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(0,0,0,0.10);
+        border-radius: 22px;
+        padding: 18px 20px;
+        box-shadow: 0 16px 38px rgba(0,0,0,0.18);
       }
 
-      /* Improve spacing + readability */
+      /* Force readable text inside */
+      .details-panel, .details-panel * {
+        color: #1f1f1f !important;
+        text-shadow: none !important;
+      }
+
       .details-meta {
         margin-top: 0.25rem;
         margin-bottom: 0.75rem;
@@ -65,16 +77,23 @@ st.markdown(
       .details-section-title {
         margin-top: 1.0rem;
         margin-bottom: 0.4rem;
-        font-weight: 700;
+        font-weight: 800;
       }
 
-      /* Make bullets slightly bigger */
-      .details-card ul {
+      /* Lists inside details */
+      .details-panel ul {
         margin-top: 0.25rem;
         margin-bottom: 0.75rem;
+        padding-left: 1.2rem;
       }
-      .details-card li {
+      .details-panel li {
         margin-bottom: 0.25rem;
+      }
+
+      /* Make instruction lines breathe */
+      .details-panel .steps li {
+        margin-bottom: 0.45rem;
+        line-height: 1.45;
       }
     </style>
     """,
@@ -108,13 +127,6 @@ def strip_trailing_id(s: str) -> str:
     return re.sub(r"\s*\(([0-9a-fA-F-]{6,})\)\s*$", "", s).strip()
 
 
-def render_multiline(text: str):
-    """Preserve user newlines in Streamlit (Markdown line breaks)."""
-    if not text:
-        return
-    st.markdown(text.replace("\n", "  \n"))
-
-
 # =========================
 # Load data (efficiently)
 # =========================
@@ -128,17 +140,15 @@ if not recipes:
 
 df_recipes = pd.DataFrame(recipes)
 
-# --- Ensure columns exist even if empty / older schema ---
-# Option A: recipes no longer has 'season'
+# Ensure columns exist
 for col in ["servings", "prep_minutes", "cook_minutes", "total_minutes", "created_by", "instructions", "notes"]:
     if col not in df_recipes.columns:
         df_recipes[col] = None
 
-# Clean recipe names (in case old data contains "(id)" suffix)
 df_recipes["name"] = df_recipes["name"].astype(str).apply(strip_trailing_id)
 
 # =========================
-# Seasons aggregation (Option A)
+# Seasons aggregation
 # =========================
 df_seasons = pd.DataFrame(season_rows)
 
@@ -155,7 +165,7 @@ df_recipes["seasons"] = df_recipes["id"].map(lambda rid: seasons_by_recipe.get(r
 df_recipes["seasons_str"] = df_recipes["seasons"].map(lambda xs: ", ".join(xs) if xs else "—")
 
 # =========================
-# Creator names: id -> "First Last" (no UID fallback)
+# Creator names
 # =========================
 creator_ids = tuple(sorted(df_recipes["created_by"].dropna().unique().tolist()))
 profiles = cached_list_profiles_by_ids(token, creator_ids)
@@ -190,11 +200,9 @@ def fmt_line(row) -> str:
     return base
 
 if not df_links.empty:
-    # for filtering
     df_links["ingredient_name"] = df_links["ingredients"].apply(
         lambda x: strip_trailing_id((x or {}).get("name", ""))
     )
-    # for display
     df_links["ingredient_line"] = df_links.apply(fmt_line, axis=1)
 else:
     df_links = pd.DataFrame(columns=["recipe_id", "ingredient_name", "ingredient_line"])
@@ -220,21 +228,17 @@ df_recipes["ingredients_str"] = df_recipes["ingredients"].map(lambda xs: ", ".jo
 # =========================
 st.sidebar.header("Filters")
 
-# Seasons filter (Option A: multi-season)
 ALL_SEASONS = ["winter", "spring", "summer", "fall"]
 chosen_seasons = st.sidebar.multiselect("Seasons", ALL_SEASONS)
 season_match_mode = st.sidebar.radio("Season match", ["Contains ANY", "Contains ALL"], horizontal=False)
 
-# Creator filter (by name)
 creator_names = sorted(df_recipes["creator_name"].dropna().unique().tolist())
 creator_choice = st.sidebar.selectbox("Creator", ["(any)"] + creator_names)
 
-# Ingredient filter
 all_ingredients = sorted(df_links["ingredient_name"].dropna().unique().tolist())
 chosen_ingredients = st.sidebar.multiselect("Ingredients", all_ingredients)
 ingredient_match_mode = st.sidebar.radio("Ingredient match", ["Contains ANY", "Contains ALL"])
 
-# Search + sort
 search = st.sidebar.text_input("Search recipe name")
 sort_choice = st.sidebar.selectbox("Sort by", ["Name (A→Z)", "Total time (low→high)", "Total time (high→low)"])
 
@@ -314,10 +318,64 @@ df_display = df[cols].rename(columns={
 st.dataframe(df_display, width="stretch", hide_index=True)
 
 # =========================
-# Details panel (readable, no IDs shown)
+# Helpers for Details HTML
 # =========================
+
+import textwrap
+import re
+
+def esc(x):
+    return html.escape(str(x)) if x is not None else ""
+
+def to_lines(text: str):
+    if not text:
+        return []
+    t = str(text).replace("\r\n", "\n").replace("\r", "\n")
+    return [ln.strip() for ln in t.split("\n") if ln.strip()]
+
+def render_text_or_bullets(text: str, css_class: str = "") -> str:
+    lines = to_lines(text)
+    if not lines:
+        return ""
+
+    bullet_like = all(re.match(r"^(\-|\*|•)\s+", ln) for ln in lines)
+    if bullet_like:
+        items = []
+        for ln in lines:
+            ln = re.sub(r"^(\-|\*|•)\s+", "", ln).strip()
+            items.append(f"<li>{esc(ln)}</li>")
+        cls = f' class="{css_class}"' if css_class else ""
+        return f"<ul{cls}>" + "".join(items) + "</ul>"
+
+    return "<div>" + "<br>".join(esc(ln) for ln in lines) + "</div>"
+def reorder_ingredient(line: str) -> str:
+    """
+    Convert:
+    '250 g — Crevettes (comment)'
+    to:
+    'Crevettes : 250 g (comment)'
+    """
+    if "—" not in line:
+        return line.strip()
+
+    left, right = [x.strip() for x in line.split("—", 1)]
+
+    # Detect comments at the end: "(...)"
+    comment = ""
+    if right.endswith(")") and "(" in right:
+        base, comment = right.rsplit("(", 1)
+        right = base.strip()
+        comment = " (" + comment
+
+    name = right
+    qty = left
+
+    if qty:
+        return f"{name} : {qty}{comment}"
+    return f"{name}{comment}"
+
 st.divider()
-st.subheader("Details")
+st.markdown('<div class="details-title">Details</div>', unsafe_allow_html=True)
 
 recipe_names = df["name"].fillna("").tolist()
 selected_name = st.selectbox("Select a recipe", ["(none)"] + sorted(set(recipe_names)))
@@ -331,39 +389,55 @@ if selected_name != "(none)":
             candidates["created_by"].tolist(),
             format_func=lambda uid: id_to_name.get(uid, "Unknown"),
         )
-        row = candidates[candidates["created_by"] == chosen_uid].iloc[0].to_dict()
+        row = candidates[candidates["created_by"] == chosen_uid].iloc[0]
     else:
-        row = candidates.iloc[0].to_dict()
+        row = candidates.iloc[0]
 
-    # ✅ open wrapper
-    st.markdown("<div class='details-panel'>", unsafe_allow_html=True)
+    ingredients_html = "".join(
+        f"<li>{esc(reorder_ingredient(line))}</li>"
+        for line in (row.get("ingredients_lines") or [])
+    ) or "<li><i>No ingredients."
 
-    st.markdown(f"### {row.get('name','')}")
-    st.write(f"Creator: **{row.get('creator_name','')}**")
-    st.write(f"Seasons: **{seasons_label(row.get('seasons', []))}**")
-    st.write(f"Servings: **{row.get('servings', 1)}**")
-    st.write(
-        f"Prep: **{row.get('prep_minutes',0)}** | "
-        f"Cook: **{row.get('cook_minutes',0)}** | "
-        f"Total: **{row.get('total_minutes',0)}**"
-    )
 
-    st.write("**Ingredients:**")
-    for line in row.get("ingredients_lines", []) or []:
-        st.write(f"- {line}")
+    instructions_html = render_text_or_bullets(row.get("instructions") or "", css_class="steps")
+    notes_html = render_text_or_bullets(row.get("notes") or "")
 
-    instructions = row.get("instructions")
-    if instructions:
-        st.write("**Instructions**")
-        render_multiline(instructions)
-    else:
-        st.info("No instructions provided for this recipe.")
+    html_block = f"""
+    <div class="details-panel">
+      <h3 style="margin-top:0;">{esc(row.get("name"))}</h3>
 
-    notes = row.get("notes")
-    if notes:
-        st.write("**Notes**")
-        render_multiline(notes)
+      <div class="details-meta">
+        <b>Creator:</b> {esc(row.get("creator_name"))}<br>
+        <b>Seasons:</b> {esc(seasons_label(row.get("seasons", [])))}<br>
+        <b>Servings:</b> {esc(row.get("servings", 1))}<br>
+        <b>Time:</b>
+        Prep {esc(row.get("prep_minutes", 0))} min +
+        Cook {esc(row.get("cook_minutes", 0))} min :
+        Total {esc(row.get("total_minutes", 0))} min
+      </div>
 
-    # ✅ close wrapper
-    st.markdown("</div>", unsafe_allow_html=True)
+      <div class="details-section-title">Ingredients</div>
+      <ul>{ingredients_html}</ul>
+    """
+
+    if instructions_html:
+        html_block += f"""
+      <div class="details-section-title">Instructions</div>
+      {instructions_html}
+        """
+
+    if notes_html:
+        html_block += f"""
+      <div class="details-section-title">Notes</div>
+      {notes_html}
+        """
+
+    html_block += """
+    </div>
+    """
+
+    # ✅ CRITICAL: remove indentation so Markdown doesn't turn it into a code block
+    html_block = textwrap.dedent(html_block).strip()
+
+    st.markdown(html_block, unsafe_allow_html=True)
 

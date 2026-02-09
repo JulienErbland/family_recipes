@@ -523,6 +523,47 @@ input, textarea, select {
   text-shadow: none !important;
 }
 
+/* =========================
+   Details title (header)
+   ========================= */
+
+.details-title {
+  display: inline-block;
+  background: rgba(255, 255, 255, 0.92);
+  padding: 10px 16px;
+  border-radius: 14px;
+  font-size: 1.35rem;
+  font-weight: 900;
+  margin-bottom: 10px;
+  box-shadow: 0 8px 20px rgba(0,0,0,.18);
+  color: #1f1f1f;
+}
+
+/* =========================
+   Streamlit bordered containers => your "card" look
+   ========================= */
+
+/* This wrapper appears when you use st.container(border=True) */
+div[data-testid="stVerticalBlockBorderWrapper"]{
+  background: rgba(255,255,255,.92) !important;
+  border: 1px solid rgba(0,0,0,.08) !important;
+  border-radius: 22px !important;
+  box-shadow: 0 14px 34px rgba(0,0,0,.14) !important;
+  overflow: hidden;
+}
+
+/* Inner padding */
+div[data-testid="stVerticalBlockBorderWrapper"] > div{
+  padding: 18px 18px !important;
+}
+
+/* Text readability inside */
+div[data-testid="stVerticalBlockBorderWrapper"],
+div[data-testid="stVerticalBlockBorderWrapper"] *{
+  color: #1f1f1f !important;
+  text-shadow: none !important;
+}
+
 
 /* Hide Streamlit "running man" menu/footer if you want (optional)
 #MainMenu { visibility: hidden; }

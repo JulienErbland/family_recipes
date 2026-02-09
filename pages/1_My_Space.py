@@ -153,7 +153,7 @@ with top2:
         unsafe_allow_html=True,
     )
 with top3:
-    if st.button("🔄 Refresh", use_container_width=True):
+    if st.button("🔄 Refresh", width=True):
         st.cache_data.clear()
         st.rerun()
 
@@ -267,7 +267,7 @@ with right:
                 disabled=not can_edit,
             )
 
-            if can_edit and st.button("💾 Save changes", use_container_width=True):
+            if can_edit and st.button("💾 Save changes", width=True):
                 update_recipe(token, recipe_id, {
                     "name": name,
                     "servings": int(servings),
@@ -331,13 +331,13 @@ with right:
 
                 b1, b2 = st.columns(2)
                 with b1:
-                    if can_edit and st.button("Save ingredient line", use_container_width=True):
+                    if can_edit and st.button("Save ingredient line", width=True):
                         update_recipe_ingredient_link(token, recipe_id, ing_id, {"quantity": q, "unit": u, "comment": c})
                         st.cache_data.clear()
                         st.success("Updated ✅")
                         st.rerun()
                 with b2:
-                    if can_edit and st.button("Remove ingredient", use_container_width=True):
+                    if can_edit and st.button("Remove ingredient", width=True):
                         delete_recipe_ingredient_link(token, recipe_id, ing_id)
                         st.cache_data.clear()
                         st.success("Removed ✅")
@@ -365,7 +365,7 @@ with right:
             with colz:
                 comment = st.text_input("Comment (optional)", value="")
 
-            if can_edit and st.button("Add to recipe", use_container_width=True):
+            if can_edit and st.button("Add to recipe", width=True):
                 if mode == "Choose existing":
                     if chosen_ing == "(select)":
                         st.error("Please select an ingredient.")
@@ -403,7 +403,7 @@ with right:
                 st.info("Only editors can delete recipes.")
             else:
                 confirm = st.checkbox("I understand this is permanent.")
-                if st.button("🗑️ Delete recipe", disabled=not confirm, use_container_width=True):
+                if st.button("🗑️ Delete recipe", disabled=not confirm, width=True):
                     delete_recipe(token, recipe_id)
                     st.cache_data.clear()
                     st.success("Deleted ✅")

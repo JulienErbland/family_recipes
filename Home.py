@@ -23,7 +23,7 @@ from app.lib.repos import (
 )
 from app.lib.ui import load_css, set_full_page_background
 from app.lib.brand import sidebar_brand
-
+from app.lib.fr_trans import role_label_fr, season_label_fr  # ✅ add season_label_fr for FR chart labels
 
 # =========================
 # Page config
@@ -147,7 +147,7 @@ st.markdown(
     <div class="hero">
       <h1 style="margin:0">🍋 La cuisine de la Madre</h1>
       <p style="margin:8px 0 0; color:rgba(0,0,0,.65); font-size: 1.02rem">
-        Le carnet de recettes de la Tribue Erbland (et plus)
+        Le carnet de recettes de la Tribu Erbland (et plus)
       </p>
     </div>
     """,
@@ -155,14 +155,14 @@ st.markdown(
 )
 
 st.info(
-    "Welcome to **La cuisine de la Madre** 👋\n\n"
-    "- This is the **family cookbook**, where recipes are shared, explored, and curated.\n"
-    "- Use **Browse** to explore recipes by **season** and **ingredients**.\n"
-    "- Your **role** defines what you can do:\n"
-    "  - **Reader** → browse and view recipes.\n"
-    "  - **Editor** → create, edit, and delete recipes.\n"
-    "- If you’re a reader and have the **editor code**, you can upgrade your role directly from this page.\n\n"
-    "Use the **left navigation** to move between Browse, Add Recipe, and My Space."
+    "Bienvenue sur **La cuisine de la Madre** 👋\n\n"
+    "- Ici, c’est le **carnet de recettes de la famille** : on partage, on découvre et on garde les meilleures.\n"
+    "- Utilise **Parcourir** pour explorer les recettes par **saison** et par **ingrédients**.\n"
+    "- Ton **rôle** définit ce que tu peux faire :\n"
+    "  - **Lecteur** → parcourir et consulter les recettes.\n"
+    "  - **Éditeur** → créer, modifier et supprimer des recettes.\n"
+    "- Si tu es lecteur et que tu as le **code éditeur**, tu peux passer éditeur directement depuis cette page.\n\n"
+    "Utilise la **navigation à gauche** pour aller sur **Parcourir**, **Ajouter une recette** et **Mon espace**."
 )
 
 st.write("")
@@ -172,17 +172,17 @@ st.write("")
 # Not logged in
 # =========================
 if not is_logged_in():
-    st.info("Log in using the sidebar to start.")
+    st.info("Connecte-toi via la barre latérale pour commencer.")
     c1, c2 = st.columns([1, 1])
 
     with c1:
         st.markdown(
-            "<div class='card'><h3>✨ Browse</h3><p>Explore recipes by season and ingredients.</p></div>",
+            "<div class='card'><h3>✨ Parcourir</h3><p>Explore les recettes par saison et ingrédients.</p></div>",
             unsafe_allow_html=True,
         )
     with c2:
         st.markdown(
-            "<div class='card'><h3>🔐 Create an account</h3><p>Sign up in the sidebar to join the family cookbook.</p></div>",
+            "<div class='card'><h3>🔐 Créer un compte</h3><p>Inscris-toi dans la barre latérale pour rejoindre le carnet de recettes.</p></div>",
             unsafe_allow_html=True,
         )
 
@@ -202,8 +202,8 @@ role = (st.session_state.role or "reader")
 is_editor = (role == "editor")
 
 st.markdown(
-    f"<span class='badge'>Authenticated ✅</span>"
-    f"<span class='badge'>Role: {role}</span>",
+    f"<span class='badge'>Connecté ✅</span>"
+    f"<span class='badge'>Rôle : {role_label_fr(role)}</span>",
     unsafe_allow_html=True,
 )
 
@@ -221,23 +221,23 @@ EDITOR_CODE = get_secret("EDITOR_INVITE_CODE", "")
 
 # Show editor upgrade UI only for non-editors
 if role != "editor":
-    with st.expander("🔑 Become an editor"):
-        st.write("If you have the family editor code, enter it to unlock recipe editing.")
-        code = st.text_input("Editor code", type="password", key="home_editor_code")
+    with st.expander("🔑 Devenir éditeur"):
+        st.write("Si tu as le code éditeur de la famille, saisis-le pour débloquer la modification des recettes.")
+        code = st.text_input("Code éditeur", type="password", key="home_editor_code")
 
-        if st.button("Upgrade to editor", use_container_width=True, key="home_upgrade_btn"):
+        if st.button("Passer en éditeur", width="stretch", key="home_upgrade_btn"):
             if not EDITOR_CODE:
-                st.error("Editor code is not configured on the server (missing EDITOR_INVITE_CODE).")
+                st.error("Le code éditeur n’est pas configuré sur le serveur (EDITOR_INVITE_CODE manquant).")
                 st.stop()
 
             if code.strip() != EDITOR_CODE:
-                st.error("Wrong code.")
+                st.error("Code incorrect.")
                 st.stop()
 
             set_my_role(token, user_id, "editor")
             st.session_state.role = "editor"
             st.cache_data.clear()
-            st.success("Upgraded to editor ✅")
+            st.success("Tu es maintenant éditeur ✅")
             st.rerun()
 
 
@@ -248,41 +248,41 @@ c1, c2, c3 = st.columns(3)
 
 with c1:
     st.markdown(
-        "<div class='card'><h3>📚 Browse</h3>"
-        "<p>Filter by season, creator, and ingredients — then open full details.</p></div>",
+        "<div class='card'><h3>📚 Parcourir</h3>"
+        "<p>Filtre par saison, créateur et ingrédients — puis ouvre les détails.</p></div>",
         unsafe_allow_html=True,
     )
 
 with c2:
     if is_editor:
         st.markdown(
-            "<div class='card'><h3>✍️ Add Recipe</h3>"
-            "<p>Create a new recipe and link ingredients cleanly.</p></div>",
+            "<div class='card'><h3>✍️ Ajouter une recette</h3>"
+            "<p>Crée une nouvelle recette et associe les ingrédients proprement.</p></div>",
             unsafe_allow_html=True,
         )
     else:
         st.markdown(
-            "<div class='card'><h3>✍️ Add Recipe</h3>"
-            "<p>You need the <b>editor</b> role to create/edit recipes.</p></div>",
+            "<div class='card'><h3>✍️ Ajouter une recette</h3>"
+            "<p>Il te faut le rôle <b>éditeur</b> pour créer/modifier des recettes.</p></div>",
             unsafe_allow_html=True,
         )
 
 with c3:
     st.markdown(
-        "<div class='card'><h3>👤 My Space</h3>"
-        "<p>See your recipes and manage them (edit / delete if editor).</p></div>",
+        "<div class='card'><h3>👤 Mon espace</h3>"
+        "<p>Retrouve tes recettes et gère-les (modifier / supprimer si éditeur).</p></div>",
         unsafe_allow_html=True,
     )
 
 st.write("")
-st.caption("Use the pages in the left navigation to browse recipes and manage your space.")
+st.caption("Utilise les pages dans la navigation à gauche pour parcourir les recettes et gérer ton espace.")
 
 
 # =========================
 # Cookbook analytics
 # =========================
 st.divider()
-st.markdown('<div class="home-analytics-title">📊 Cookbook analytics</div>', unsafe_allow_html=True)
+st.markdown('<div class="home-analytics-title">📊 Statistiques du carnet</div>', unsafe_allow_html=True)
 
 
 @st.cache_data(ttl=60, show_spinner=False)
@@ -293,7 +293,7 @@ def _load_home_stats(access_token: str):
     return recipes_ or [], links_ or [], seasons_ or []
 
 
-with st.spinner("Loading cookbook stats…"):
+with st.spinner("Chargement des statistiques…"):
     recipes, links, seasons_rows = _load_home_stats(token)
 
 df_recipes = pd.DataFrame(recipes)
@@ -314,9 +314,9 @@ for p in (profiles or []):
     fn = (p.get("first_name") or "").strip()
     ln = (p.get("last_name") or "").strip()
     full = (fn + " " + ln).strip()
-    id_to_name[p["id"]] = full if full else "Unknown"
+    id_to_name[p["id"]] = full if full else "Inconnu"
 
-df_recipes["creator_name"] = df_recipes["created_by"].map(lambda uid: id_to_name.get(uid, "Unknown"))
+df_recipes["creator_name"] = df_recipes["created_by"].map(lambda uid: id_to_name.get(uid, "Inconnu"))
 
 # KPIs
 total_recipes = int(len(df_recipes))
@@ -350,13 +350,13 @@ def kpi(icon: str, value: str, label: str):
 
 k1, k2, k3, k4 = st.columns(4)
 with k1:
-    kpi("📚", str(total_recipes), "Total recipes")
+    kpi("📚", str(total_recipes), "Nombre total de recettes")
 with k2:
-    kpi("🧂", str(unique_ingredients), "Unique ingredients")
+    kpi("🧂", str(unique_ingredients), "Ingrédients distincts")
 with k3:
-    kpi("🧾", str(total_links), "Ingredient lines")
+    kpi("🧾", str(total_links), "Lignes d’ingrédients (recettes)")
 with k4:
-    kpi("⏱️", f"{avg_time} min", "Avg total time")
+    kpi("⏱️", f"{avg_time} min", "Temps total moyen")
 
 st.write("")
 
@@ -365,9 +365,9 @@ left, right = st.columns([1.15, 1.0], gap="large")
 
 with left:
     with st.container(border=True):
-        st.markdown("### Most used ingredients")
+        st.markdown("### Ingrédients les plus utilisés")
         if df_links.empty or "ingredients" not in df_links.columns:
-            st.info("No ingredient usage data yet.")
+            st.info("Pas encore de données d’utilisation des ingrédients.")
         else:
             ing_names = df_links["ingredients"].apply(lambda x: (x or {}).get("name", "")).replace("", pd.NA).dropna()
             top_ing = ing_names.value_counts().head(12).reset_index()
@@ -377,23 +377,23 @@ with left:
                 alt.Chart(top_ing)
                 .mark_bar()
                 .encode(
-                    x=alt.X("count:Q", title="Uses"),
+                    x=alt.X("count:Q", title="Utilisations"),
                     y=alt.Y("ingredient:N", sort="-x", title=None),
                     tooltip=["ingredient:N", "count:Q"],
                 )
                 .properties(height=320)
                 .configure_view(strokeOpacity=0)
             )
-            st.altair_chart(chart, use_container_width=True)
+            st.altair_chart(chart, width="stretch")
 
     with st.container(border=True):
-        st.markdown("### Recipes by creator")
+        st.markdown("### Recettes par créateur")
         if df_recipes.empty:
-            st.info("No recipes yet.")
+            st.info("Aucune recette pour le moment.")
         else:
             top_creators = (
                 df_recipes["creator_name"]
-                .fillna("Unknown")
+                .fillna("Inconnu")
                 .value_counts()
                 .head(10)
                 .reset_index()
@@ -404,22 +404,22 @@ with left:
                 alt.Chart(top_creators)
                 .mark_bar()
                 .encode(
-                    x=alt.X("count:Q", title="Recipes"),
+                    x=alt.X("count:Q", title="Recettes"),
                     y=alt.Y("creator:N", sort="-x", title=None),
                     tooltip=["creator:N", "count:Q"],
                 )
                 .properties(height=280)
                 .configure_view(strokeOpacity=0)
             )
-            st.altair_chart(chart, use_container_width=True)
+            st.altair_chart(chart, width="stretch")
 
 with right:
     with st.container(border=True):
-        st.markdown("### Recipes by season")
+        st.markdown("### Recettes par saison")
         ALL_SEASONS = ["winter", "spring", "summer", "fall"]
 
         if df_seasons.empty or "season" not in df_seasons.columns:
-            st.info("No season links yet.")
+            st.info("Aucune association saison ↔ recette pour l’instant.")
         else:
             season_counts = (
                 df_seasons["season"]
@@ -430,24 +430,29 @@ with right:
                 .reset_index()
             )
             season_counts.columns = ["season", "count"]
+            season_counts["season_label"] = season_counts["season"].map(season_label_fr)
 
             chart = (
                 alt.Chart(season_counts)
                 .mark_bar()
                 .encode(
-                    x=alt.X("season:N", sort=ALL_SEASONS, title=None),
-                    y=alt.Y("count:Q", title="Recipes"),
-                    tooltip=["season:N", "count:Q"],
+                    x=alt.X(
+                        "season_label:N",
+                        sort=[season_label_fr(s) for s in ALL_SEASONS],
+                        title=None
+                    ),
+                    y=alt.Y("count:Q", title="Recettes"),
+                    tooltip=["season_label:N", "count:Q"],
                 )
                 .properties(height=220)
                 .configure_view(strokeOpacity=0)
             )
-            st.altair_chart(chart, use_container_width=True)
+            st.altair_chart(chart, width="stretch")
 
     with st.container(border=True):
-        st.markdown("### Total time buckets")
+        st.markdown("### Répartition du temps total")
         if t.empty:
-            st.info("No time data yet.")
+            st.info("Pas encore de données de temps.")
         else:
             bins = [0, 10, 20, 30, 45, 60, 90, 10_000]
             labels = ["0–10", "10–20", "20–30", "30–45", "45–60", "60–90", "90+"]
@@ -467,22 +472,22 @@ with right:
                 .mark_bar()
                 .encode(
                     x=alt.X("bucket:N", sort=labels, title=None),
-                    y=alt.Y("count:Q", title="Recipes"),
+                    y=alt.Y("count:Q", title="Recettes"),
                     tooltip=["bucket:N", "count:Q"],
                 )
                 .properties(height=220)
                 .configure_view(strokeOpacity=0)
             )
-            st.altair_chart(chart, use_container_width=True)
+            st.altair_chart(chart, width="stretch")
 
 # Pretty HTML tables
 st.write("")
-st.markdown("### Highlights")
+st.markdown("### Faits marquants")
 
 
 def html_table(df_small: pd.DataFrame) -> str:
     if df_small is None or df_small.empty:
-        return "<div style='color:rgba(0,0,0,.6)'><i>No data.</i></div>"
+        return "<div style='color:rgba(0,0,0,.6)'><i>Aucune donnée.</i></div>"
     df_safe = df_small.copy()
     for c in df_safe.columns:
         df_safe[c] = df_safe[c].astype(str)
@@ -497,28 +502,28 @@ h1, h2 = st.columns(2)
 
 with h1:
     with st.container(border=True):
-        st.markdown("#### ⚡ Fastest recipes")
+        st.markdown("#### ⚡ Recettes les plus rapides")
         fastest = (
             tmp.sort_values("total_m")
             .head(6)[["name", "total_m", "creator_name"]]
-            .rename(columns={"name": "Recipe", "total_m": "Total (min)", "creator_name": "Creator"})
+            .rename(columns={"name": "Recette", "total_m": "Total (min)", "creator_name": "Créateur"})
         )
         st.markdown(html_table(fastest), unsafe_allow_html=True)
 
 with h2:
     with st.container(border=True):
-        st.markdown("#### 🕰️ Longest recipes")
+        st.markdown("#### 🕰️ Recettes les plus longues")
         slowest = (
             tmp.sort_values("total_m", ascending=False)
             .head(6)[["name", "total_m", "creator_name"]]
-            .rename(columns={"name": "Recipe", "total_m": "Total (min)", "creator_name": "Creator"})
+            .rename(columns={"name": "Recette", "total_m": "Total (min)", "creator_name": "Créateur"})
         )
         st.markdown(html_table(slowest), unsafe_allow_html=True)
 
 with st.container(border=True):
-    st.markdown("#### 🆕 Recently added")
+    st.markdown("#### 🆕 Ajoutées récemment")
     if "created_at" not in df_recipes.columns or df_recipes["created_at"].isna().all():
-        st.markdown("<i>No created_at available.</i>", unsafe_allow_html=True)
+        st.markdown("<i>Date de création indisponible.</i>", unsafe_allow_html=True)
     else:
         recent = df_recipes.copy()
         recent["created_at_dt"] = pd.to_datetime(recent["created_at"], errors="coerce")
@@ -526,7 +531,7 @@ with st.container(border=True):
             recent.dropna(subset=["created_at_dt"])
             .sort_values("created_at_dt", ascending=False)
             .head(10)[["name", "creator_name", "created_at_dt"]]
-            .rename(columns={"name": "Recipe", "creator_name": "Creator", "created_at_dt": "Created"})
+            .rename(columns={"name": "Recette", "creator_name": "Créateur", "created_at_dt": "Créée"})
         )
-        recent["Created"] = recent["Created"].dt.strftime("%Y-%m-%d %H:%M")
+        recent["Créée"] = recent["Créée"].dt.strftime("%Y-%m-%d %H:%M")
         st.markdown(html_table(recent), unsafe_allow_html=True)

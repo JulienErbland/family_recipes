@@ -27,12 +27,13 @@ from app.lib.repos import (
 )
 from app.lib.ui import set_full_page_background, load_css
 from app.lib.brand import sidebar_brand
+from app.lib.fr_trans import season_label_fr, seasons_label_fr, role_label_fr
 
 # -----------------------------
 # Page config + styling
 # -----------------------------
 st.set_page_config(
-    page_title="My Space",
+    page_title="Mon espace",
     page_icon="👤",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -42,26 +43,29 @@ init_session()
 load_css()
 sidebar_brand()
 
-st.title("👤 My Space")
+st.title("👤 Mon espace")
 
 st.info(
-    "How My Space works:\n"
-    "- This page shows **only your own recipes**.\n"
-    "- Use the **Search** box to quickly find a recipe, then select it to open the editor.\n"
-    "- You’ll see three tabs:\n"
-    "  - **✍️ Edit**: update recipe details (name, seasons, servings, times, instructions, notes).\n"
-    "  - **🧂 Ingredients**: view all ingredient lines, **edit/remove** an existing line, or **add** a new one.\n"
-    "  - **⚠️ Danger zone**: permanently delete the recipe (requires confirmation).\n"
-    "- Roles matter:\n"
-    "  - **Editors** can save changes, edit ingredients, and delete recipes.\n"
-    "  - **Readers** can view everything but cannot modify anything.\n"
-    "- After saving or deleting, the page refreshes automatically to show the latest data."
+    "Comment fonctionne **Mon espace** :\n"
+    "- Cette page affiche **uniquement tes propres recettes**.\n"
+    "- Utilise **Recherche** pour retrouver rapidement une recette, puis sélectionne-la pour ouvrir l’éditeur.\n"
+    "- Tu as trois onglets :\n"
+    "  - **✍️ Modifier** : mettre à jour la recette (nom, saisons, portions, temps, instructions, notes).\n"
+    "  - **🧂 Ingrédients** : voir toutes les lignes, **modifier/supprimer** une ligne existante, ou **en ajouter** une.\n"
+    "  - **⚠️ Zone dangereuse** : supprimer définitivement la recette (confirmation requise).\n"
+    "- Les rôles comptent :\n"
+    "  - Les **éditeurs** peuvent enregistrer, modifier les ingrédients et supprimer des recettes.\n"
+    "  - Les **lecteurs** peuvent tout consulter mais ne peuvent rien modifier.\n"
+    "- Après un enregistrement ou une suppression, la page se rafraîchit automatiquement pour afficher les dernières données."
 )
 
-st.caption("Tip: ingredient names must match exactly — 'Tomato' and 'Tomatoes' will be treated as different ingredients.")
+st.caption(
+    "Astuce : les noms d’ingrédients doivent correspondre exactement — "
+    "« Tomate » et « Tomates » seront considérés comme deux ingrédients différents."
+)
 
 if not is_logged_in():
-    st.warning("Please log in via Home.")
+    st.warning("Merci de te connecter via **Accueil**.")
     st.stop()
 
 token = st.session_state.session.access_token
@@ -76,29 +80,32 @@ role = st.session_state.role
 can_edit = (role == "editor")
 
 # -----------------------------
-# Header badges (kept as HTML since it's just text)
+# Header badges
 # -----------------------------
 st.markdown(
-    f"<span class='badge'>Signed in as: {user.email}</span> "
-    f"<span class='badge'>Role: {role}</span>",
+    f"<span class='badge'>Connecté : {user.email}</span> "
+    f"<span class='badge'>Rôle : {role_label_fr(role)}</span>",
     unsafe_allow_html=True,
 )
 
 if not can_edit:
-    st.info("You are a **reader**. You can browse recipes, but only **editors** can edit or delete.")
+    st.info("Tu es **lecteur**. Tu peux consulter les recettes, mais seuls les **éditeurs** peuvent modifier ou supprimer.")
 
 # -----------------------------
 # Load data
 # -----------------------------
 recipes = cached_list_my_recipes(token, user_id)
 if not recipes:
-    st.info("You don't have any recipes yet. Go to **Add Recipe** to create one.")
+    st.info("Tu n’as pas encore de recettes. Va sur **Ajouter une recette** pour en créer une.")
     st.stop()
 
 df = pd.DataFrame(recipes)
 
 # Ensure columns exist (Option A: no 'season' column anymore)
-for col in ["id", "name", "servings", "prep_minutes", "cook_minutes", "total_minutes", "instructions", "notes", "created_at", "updated_at"]:
+for col in [
+    "id", "name", "servings", "prep_minutes", "cook_minutes", "total_minutes",
+    "instructions", "notes", "created_at", "updated_at"
+]:
     if col not in df.columns:
         df[col] = None
 
@@ -118,7 +125,8 @@ else:
     )
 
 df["seasons"] = df["id"].map(lambda rid: seasons_by_recipe.get(rid, []))
-df["seasons_str"] = df["seasons"].map(lambda xs: ", ".join(xs) if xs else "—")
+# ✅ UI: afficher en FR dans les résumés/tableaux
+df["seasons_str"] = df["seasons"].map(lambda xs: seasons_label_fr(xs) if xs else "—")
 
 # Stats
 total = len(df)
@@ -137,7 +145,7 @@ with top1:
         f"""
         <div class="card">
           <h3 style="margin:0">📚 {total}</h3>
-          <p style="margin:6px 0 0">My recipes</p>
+          <p style="margin:6px 0 0">Mes recettes</p>
         </div>
         """,
         unsafe_allow_html=True,
@@ -147,13 +155,13 @@ with top2:
         f"""
         <div class="card">
           <h3 style="margin:0">⏱️ {avg_time} min</h3>
-          <p style="margin:6px 0 0">Average total time</p>
+          <p style="margin:6px 0 0">Temps total moyen</p>
         </div>
         """,
         unsafe_allow_html=True,
     )
 with top3:
-    if st.button("🔄 Refresh", width=True):
+    if st.button("🔄 Rafraîchir", width="stretch"):
         st.cache_data.clear()
         st.rerun()
 
@@ -166,10 +174,10 @@ left, right = st.columns([1.15, 1.85], gap="large")
 
 # ===== Left: Recipe picker + quick preview =====
 with left:
-    st.subheader("Your recipes")
+    st.subheader("Tes recettes")
 
     df["name_clean"] = df["name"].fillna("").astype(str)
-    search = st.text_input("Search", value="", placeholder="Type to filter…")
+    search = st.text_input("Recherche", value="", placeholder="Tape pour filtrer…")
 
     df_pick = df.copy()
     if search.strip():
@@ -177,16 +185,19 @@ with left:
 
     names = sorted(df_pick["name_clean"].unique().tolist())
     if not names:
-        st.info("No match.")
+        st.info("Aucun résultat.")
         st.stop()
 
-    selected_name = st.selectbox("Select a recipe", names)
+    selected_name = st.selectbox("Sélectionner une recette", names)
 
     candidates = df_pick[df_pick["name_clean"] == selected_name].copy()
     candidates["created_date"] = candidates["created_at"].astype(str).str[:10].fillna("")
 
     if len(candidates) > 1:
-        selected_date = st.selectbox("Pick version (date)", candidates["created_date"].unique().tolist())
+        selected_date = st.selectbox(
+            "Choisir la version (date de création)",
+            candidates["created_date"].unique().tolist()
+        )
         chosen = candidates[candidates["created_date"] == selected_date].iloc[0]
     else:
         chosen = candidates.iloc[0]
@@ -194,42 +205,42 @@ with left:
     recipe_id = chosen["id"]
     row = chosen.to_dict()
 
-    # Quick preview: USE A REAL STREAMLIT CONTAINER so it stays "carded"
     with st.container(border=True):
         st.markdown(f"### {row.get('name','')}")
-        st.write(f"Seasons: **{row.get('seasons_str','—')}**")
-        st.write(f"Servings: **{row.get('servings', 1)}**")
-        st.write(f"Total: **{row.get('total_minutes', 0)} min**")
-        st.caption(f"Created: {str(row.get('created_at'))[:19]}")
-        st.caption(f"Updated: {str(row.get('updated_at'))[:19]}")
+        st.write(f"Saisons : **{seasons_label_fr(row.get('seasons', [])) or '—'}**")
+        st.write(f"Portions : **{row.get('servings', 1)}**")
+        st.write(f"Temps total : **{row.get('total_minutes', 0)} min**")
+        st.caption(f"Créée : {str(row.get('created_at'))[:19]}")
+        st.caption(f"Modifiée : {str(row.get('updated_at'))[:19]}")
 
 # ===== Right: Tabs (Edit / Ingredients / Danger) =====
 with right:
-    tab_edit, tab_ings, tab_danger = st.tabs(["✍️ Edit", "🧂 Ingredients", "⚠️ Danger zone"])
+    tab_edit, tab_ings, tab_danger = st.tabs(["✍️ Modifier", "🧂 Ingrédients", "⚠️ Zone dangereuse"])
 
     # -------- Edit tab --------
     with tab_edit:
         with st.container(border=True):
-            st.subheader("Edit recipe")
-            st.caption("Changes are saved to Supabase. Total minutes is computed automatically.")
+            st.subheader("Modifier la recette")
+            st.caption("Les changements sont enregistrés dans Supabase. Le temps total est calculé automatiquement.")
 
-            name = st.text_input("Name", value=row.get("name") or "", disabled=not can_edit)
+            name = st.text_input("Nom", value=row.get("name") or "", disabled=not can_edit)
 
             ALL_SEASONS = ["winter", "spring", "summer", "fall"]
             current_seasons = seasons_by_recipe.get(recipe_id, [])
             current_seasons = [s for s in current_seasons if s in ALL_SEASONS]
 
             seasons = st.multiselect(
-                "Seasons",
+                "Saisons",
                 ALL_SEASONS,
                 default=current_seasons,
+                format_func=season_label_fr,
                 disabled=not can_edit,
             )
 
             c1, c2, c3 = st.columns(3)
             with c1:
                 servings = st.number_input(
-                    "Servings",
+                    "Portions",
                     min_value=1,
                     value=int(row.get("servings") or 1),
                     step=1,
@@ -237,7 +248,7 @@ with right:
                 )
             with c2:
                 prep = st.number_input(
-                    "Prep (min)",
+                    "Préparation (min)",
                     min_value=0,
                     value=int(row.get("prep_minutes") or 0),
                     step=5,
@@ -245,14 +256,14 @@ with right:
                 )
             with c3:
                 cook = st.number_input(
-                    "Cook (min)",
+                    "Cuisson (min)",
                     min_value=0,
                     value=int(row.get("cook_minutes") or 0),
                     step=5,
                     disabled=not can_edit,
                 )
 
-            st.caption(f"Total: **{int(prep) + int(cook)} min** (auto-computed in DB)")
+            st.caption(f"Temps total : **{int(prep) + int(cook)} min** (calculé automatiquement en base)")
 
             instructions = st.text_area(
                 "Instructions",
@@ -267,7 +278,7 @@ with right:
                 disabled=not can_edit,
             )
 
-            if can_edit and st.button("💾 Save changes", width=True):
+            if can_edit and st.button("💾 Enregistrer", width="stretch"):
                 update_recipe(token, recipe_id, {
                     "name": name,
                     "servings": int(servings),
@@ -279,11 +290,11 @@ with right:
                 set_recipe_seasons(token, recipe_id, seasons)
 
                 st.cache_data.clear()
-                st.success("Saved ✅")
+                st.success("Enregistré ✅")
                 st.rerun()
 
         with st.container(border=True):
-            st.subheader("Preview")
+            st.subheader("Aperçu")
             if row.get("instructions"):
                 st.markdown("**Instructions**")
                 st.markdown((row["instructions"] or "").replace("\n", "  \n"))
@@ -294,11 +305,11 @@ with right:
     # -------- Ingredients tab --------
     with tab_ings:
         with st.container(border=True):
-            st.subheader("Ingredients")
+            st.subheader("Ingrédients")
             links = cached_get_recipe_ingredients(token, recipe_id)
 
             if not links:
-                st.info("No ingredients linked yet.")
+                st.info("Aucun ingrédient associé pour le moment.")
                 df_links = pd.DataFrame(columns=["ingredient_id", "name", "quantity", "unit", "comment"])
             else:
                 rows_links = []
@@ -315,67 +326,86 @@ with right:
             st.dataframe(df_links[["name", "quantity", "unit", "comment"]], hide_index=True, width="stretch")
 
         with st.container(border=True):
-            st.subheader("Update / remove")
-            st.caption("Pick one ingredient line to edit.")
+            st.subheader("Modifier ou supprimer une ligne")
+            st.caption("Choisis une ligne d’ingrédient à modifier.")
 
             if df_links.empty:
-                st.info("Nothing to edit yet.")
+                st.info("Rien à modifier pour l’instant.")
             else:
-                pick = st.selectbox("Ingredient", df_links["name"].tolist())
+                pick = st.selectbox("Ligne d’ingrédient", df_links["name"].tolist())
                 line = df_links[df_links["name"] == pick].iloc[0].to_dict()
                 ing_id = line["ingredient_id"]
 
-                q = st.text_input("Quantity", value=line.get("quantity", ""), disabled=not can_edit)
-                u = st.text_input("Unit", value=line.get("unit", ""), disabled=not can_edit)
-                c = st.text_input("Comment", value=line.get("comment", ""), disabled=not can_edit)
+                q = st.text_input("Quantité", value=line.get("quantity", ""), disabled=not can_edit)
+                u = st.text_input("Unité", value=line.get("unit", ""), disabled=not can_edit)
+                c = st.text_input("Commentaire (optionnel)", value=line.get("comment", ""), disabled=not can_edit)
 
                 b1, b2 = st.columns(2)
                 with b1:
-                    if can_edit and st.button("Save ingredient line", width=True):
-                        update_recipe_ingredient_link(token, recipe_id, ing_id, {"quantity": q, "unit": u, "comment": c})
+                    if can_edit and st.button("Enregistrer la modification", width="stretch"):
+                        update_recipe_ingredient_link(
+                            token, recipe_id, ing_id,
+                            {"quantity": q, "unit": u, "comment": c}
+                        )
                         st.cache_data.clear()
-                        st.success("Updated ✅")
+                        st.success("Mis à jour ✅")
                         st.rerun()
                 with b2:
-                    if can_edit and st.button("Remove ingredient", width=True):
+                    if can_edit and st.button("Supprimer cette ligne", width="stretch"):
                         delete_recipe_ingredient_link(token, recipe_id, ing_id)
                         st.cache_data.clear()
-                        st.success("Removed ✅")
+                        st.success("Supprimé ✅")
                         st.rerun()
 
         with st.container(border=True):
-            st.subheader("➕ Add ingredient")
+            st.subheader("➕ Ajouter un ingrédient")
             all_ings = cached_list_ingredients(token)
             ing_names = [x["name"] for x in all_ings]
 
-            mode = st.radio("Pick mode", ["Choose existing", "Create new"], horizontal=True)
+            mode = st.radio(
+                "Mode",
+                ["Choisir un ingrédient existant", "Créer un nouvel ingrédient"],
+                horizontal=True
+            )
 
-            if mode == "Choose existing":
-                chosen_ing = st.selectbox("Ingredient", ["(select)"] + ing_names, index=0)
+            if mode == "Choisir un ingrédient existant":
+                chosen_ing = st.selectbox("Ingrédient", ["(sélectionner)"] + ing_names, index=0)
                 new_name = ""
             else:
-                new_name = st.text_input("New ingredient name", value="")
-                chosen_ing = "(select)"
+                new_name = st.text_input("Nom du nouvel ingrédient", value="")
+                chosen_ing = "(sélectionner)"
 
             colx, coly, colz = st.columns(3)
             with colx:
-                qty = st.text_input("Quantity (optional)", value="")
+                qty = st.text_input(
+                    "Quantité (optionnel)",
+                    value="",
+                    key=f"add_ing_qty_{recipe_id}",
+                )
             with coly:
-                unit = st.text_input("Unit (optional)", value="")
+                unit = st.text_input(
+                    "Unité (optionnel)",
+                    value="",
+                    key=f"add_ing_unit_{recipe_id}",
+                )
             with colz:
-                comment = st.text_input("Comment (optional)", value="")
+                comment = st.text_input(
+                    "Commentaire (optionnel)",
+                    value="",
+                    key=f"add_ing_comment_{recipe_id}",
+                )
 
-            if can_edit and st.button("Add to recipe", width=True):
-                if mode == "Choose existing":
-                    if chosen_ing == "(select)":
-                        st.error("Please select an ingredient.")
+            if can_edit and st.button("Ajouter à la recette", width="stretch"):
+                if mode == "Choisir un ingrédient existant":
+                    if chosen_ing == "(sélectionner)":
+                        st.error("Merci de sélectionner un ingrédient.")
                         st.stop()
                     ing = find_ingredient_by_name(token, chosen_ing)
                     ing_id = ing["id"]
                 else:
                     clean = (new_name or "").strip()
                     if not clean:
-                        st.error("Please type a name for the new ingredient.")
+                        st.error("Merci de saisir un nom pour le nouvel ingrédient.")
                         st.stop()
                     created = create_ingredient(token, clean)
                     ing_id = created["id"]
@@ -388,23 +418,23 @@ with right:
                     "comment": comment or None,
                 })
                 st.cache_data.clear()
-                st.success("Added ✅")
+                st.success("Ajouté ✅")
                 st.rerun()
 
             if not can_edit:
-                st.caption("Only editors can edit ingredients.")
+                st.caption("Seuls les éditeurs peuvent modifier les ingrédients.")
 
     # -------- Danger tab --------
     with tab_danger:
         with st.container(border=True):
-            st.subheader("Delete recipe")
+            st.subheader("Supprimer la recette")
 
             if not can_edit:
-                st.info("Only editors can delete recipes.")
+                st.info("Seuls les éditeurs peuvent supprimer des recettes.")
             else:
-                confirm = st.checkbox("I understand this is permanent.")
-                if st.button("🗑️ Delete recipe", disabled=not confirm, width=True):
+                confirm = st.checkbox("Je comprends que cette action est définitive.")
+                if st.button("🗑️ Supprimer la recette", disabled=not confirm, width="stretch"):
                     delete_recipe(token, recipe_id)
                     st.cache_data.clear()
-                    st.success("Deleted ✅")
+                    st.success("Supprimé ✅")
                     st.rerun()

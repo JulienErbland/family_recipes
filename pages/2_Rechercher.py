@@ -19,9 +19,11 @@ from app.lib.repos import (
 )
 from app.lib.ui import set_full_page_background, load_css
 from app.lib.brand import sidebar_brand
+from app.lib.fr_trans import season_label_fr, seasons_label_fr
+
 
 st.set_page_config(
-    page_title="Browse",
+    page_title="Parcourir",
     page_icon="📚",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -31,7 +33,7 @@ init_session()
 load_css()
 sidebar_brand()
 
-st.title("📚 Browse recipes")
+st.title("📚 Parcourir les recettes")
 
 # ---- Readability CSS for Details panel ----
 st.markdown(
@@ -101,20 +103,20 @@ st.markdown(
 )
 
 st.info(
-    "How to browse recipes:\n"
-    "- Use the **Filters** in the left sidebar to narrow down the list.\n"
-    "- You can filter by **Seasons** (winter/spring/summer/fall) and choose how strict it is:\n"
-    "  - **Contains ANY** → shows recipes that match *at least one* of the selected seasons.\n"
-    "  - **Contains ALL** → shows recipes that match *every* selected season.\n"
-    "- You can also filter by **Ingredients** the same way:\n"
-    "  - **Contains ANY** → recipes containing *at least one* selected ingredient.\n"
-    "  - **Contains ALL** → recipes containing *all* selected ingredients.\n"
-    "- Use **Search** to find recipes by name, and **Sort** to order results.\n"
-    "- Finally, pick a recipe in the **Details** section to view full ingredients + instructions."
+    "Comment parcourir les recettes :\n"
+    "- Utilise les **Filtres** dans la barre latérale gauche pour réduire la liste.\n"
+    "- Tu peux filtrer par **Saisons** (Hiver / Printemps / Été / Automne) et choisir le type de correspondance :\n"
+    "  - **Contient AU MOINS UN** → affiche les recettes qui correspondent à *au moins une* des saisons sélectionnées.\n"
+    "  - **Contient TOUTES** → affiche les recettes qui correspondent à *toutes* les saisons sélectionnées.\n"
+    "- Tu peux aussi filtrer par **Ingrédients** de la même manière :\n"
+    "  - **Contient AU MOINS UN** → recettes contenant *au moins un* ingrédient sélectionné.\n"
+    "  - **Contient TOUS** → recettes contenant *tous* les ingrédients sélectionnés.\n"
+    "- Utilise **Recherche** pour trouver une recette par nom, et **Trier** pour ordonner les résultats.\n"
+    "- Enfin, choisis une recette dans la section **Détails** pour voir la liste complète des ingrédients + les instructions."
 )
 
 if not is_logged_in():
-    st.warning("Please log in via Home.")
+    st.warning("Merci de te connecter via Accueil.")
     st.stop()
 
 token = st.session_state.session.access_token
@@ -135,7 +137,7 @@ links = cached_list_recipe_ingredients(token)
 season_rows = cached_list_recipe_seasons(token)
 
 if not recipes:
-    st.info("No recipes yet.")
+    st.info("Aucune recette pour le moment.")
     st.stop()
 
 df_recipes = pd.DataFrame(recipes)
@@ -162,7 +164,7 @@ else:
     )
 
 df_recipes["seasons"] = df_recipes["id"].map(lambda rid: seasons_by_recipe.get(rid, []))
-df_recipes["seasons_str"] = df_recipes["seasons"].map(lambda xs: ", ".join(xs) if xs else "—")
+df_recipes["seasons_str"] = df_recipes["seasons"].map(lambda xs: seasons_label_fr(xs) if xs else "—")
 
 # =========================
 # Creator names
@@ -175,9 +177,9 @@ for p in profiles:
     fn = (p.get("first_name") or "").strip()
     ln = (p.get("last_name") or "").strip()
     full = (fn + " " + ln).strip()
-    id_to_name[p["id"]] = full if full else "Unknown"
+    id_to_name[p["id"]] = full if full else "Inconnu"
 
-df_recipes["creator_name"] = df_recipes["created_by"].map(lambda uid: id_to_name.get(uid, "Unknown"))
+df_recipes["creator_name"] = df_recipes["created_by"].map(lambda uid: id_to_name.get(uid, "Inconnu"))
 
 # =========================
 # Ingredients aggregation
@@ -226,21 +228,35 @@ df_recipes["ingredients_str"] = df_recipes["ingredients"].map(lambda xs: ", ".jo
 # =========================
 # Filters UI
 # =========================
-st.sidebar.header("Filters")
+st.sidebar.header("Filtres")
 
 ALL_SEASONS = ["winter", "spring", "summer", "fall"]
-chosen_seasons = st.sidebar.multiselect("Seasons", ALL_SEASONS)
-season_match_mode = st.sidebar.radio("Season match", ["Contains ANY", "Contains ALL"], horizontal=False)
+chosen_seasons = st.sidebar.multiselect(
+    "Saisons",
+    ALL_SEASONS,
+    format_func=season_label_fr
+)
+season_match_mode = st.sidebar.radio(
+    "Correspondance saisons",
+    ["Contient AU MOINS UN", "Contient TOUTES"],
+    horizontal=False
+)
 
 creator_names = sorted(df_recipes["creator_name"].dropna().unique().tolist())
-creator_choice = st.sidebar.selectbox("Creator", ["(any)"] + creator_names)
+creator_choice = st.sidebar.selectbox("Créateur", ["(tous)"] + creator_names)
 
 all_ingredients = sorted(df_links["ingredient_name"].dropna().unique().tolist())
-chosen_ingredients = st.sidebar.multiselect("Ingredients", all_ingredients)
-ingredient_match_mode = st.sidebar.radio("Ingredient match", ["Contains ANY", "Contains ALL"])
+chosen_ingredients = st.sidebar.multiselect("Ingrédients", all_ingredients)
+ingredient_match_mode = st.sidebar.radio(
+    "Correspondance ingrédients",
+    ["Contient AU MOINS UN", "Contient TOUS"]
+)
 
-search = st.sidebar.text_input("Search recipe name")
-sort_choice = st.sidebar.selectbox("Sort by", ["Name (A→Z)", "Total time (low→high)", "Total time (high→low)"])
+search = st.sidebar.text_input("Recherche (nom de recette)")
+sort_choice = st.sidebar.selectbox(
+    "Trier par",
+    ["Nom (A→Z)", "Temps total (court→long)", "Temps total (long→court)"]
+)
 
 # =========================
 # Apply filters
@@ -252,13 +268,13 @@ if chosen_seasons:
 
     def season_matches(season_list):
         sset = set(season_list or [])
-        if season_match_mode == "Contains ANY":
+        if season_match_mode == "Contient AU MOINS UN":
             return len(sset & chosen_set) > 0
         return chosen_set.issubset(sset)
 
     df = df[df["seasons"].apply(season_matches)]
 
-if creator_choice != "(any)":
+if creator_choice != "(tous)":
     df = df[df["creator_name"] == creator_choice]
 
 if chosen_ingredients:
@@ -266,7 +282,7 @@ if chosen_ingredients:
 
     def ing_matches(ing_list):
         ing_set = set(ing_list or [])
-        if ingredient_match_mode == "Contains ANY":
+        if ingredient_match_mode == "Contient AU MOINS UN":
             return len(ing_set & chosen_set) > 0
         return chosen_set.issubset(ing_set)
 
@@ -275,9 +291,9 @@ if chosen_ingredients:
 if search.strip():
     df = df[df["name"].str.contains(search.strip(), case=False, na=False)]
 
-if sort_choice == "Name (A→Z)":
+if sort_choice == "Nom (A→Z)":
     df = df.sort_values("name")
-elif sort_choice == "Total time (low→high)":
+elif sort_choice == "Temps total (court→long)":
     df = df.sort_values("total_minutes")
 else:
     df = df.sort_values("total_minutes", ascending=False)
@@ -285,12 +301,7 @@ else:
 # =========================
 # Table view
 # =========================
-st.subheader(f"Recipes ({len(df)} shown)")
-
-def seasons_label(seasons):
-    if set(seasons) == {"winter", "spring", "summer", "fall"}:
-        return "All year"
-    return ", ".join(seasons)
+st.subheader(f"Recettes ({len(df)} affichées)")
 
 cols = [
     "name",
@@ -305,14 +316,14 @@ cols = [
 cols = [c for c in cols if c in df.columns]
 
 df_display = df[cols].rename(columns={
-    "name": "Recipe",
-    "seasons_str": "Seasons",
-    "servings": "Servings",
-    "prep_minutes": "Prep (min)",
-    "cook_minutes": "Cook (min)",
+    "name": "Recette",
+    "seasons_str": "Saisons",
+    "servings": "Portions",
+    "prep_minutes": "Prépa (min)",
+    "cook_minutes": "Cuisson (min)",
     "total_minutes": "Total (min)",
-    "creator_name": "Creator",
-    "ingredients_str": "Ingredients",
+    "creator_name": "Créateur",
+    "ingredients_str": "Ingrédients",
 })
 
 st.dataframe(df_display, width="stretch", hide_index=True)
@@ -320,9 +331,7 @@ st.dataframe(df_display, width="stretch", hide_index=True)
 # =========================
 # Helpers for Details HTML
 # =========================
-
 import textwrap
-import re
 
 def esc(x):
     return html.escape(str(x)) if x is not None else ""
@@ -348,6 +357,7 @@ def render_text_or_bullets(text: str, css_class: str = "") -> str:
         return f"<ul{cls}>" + "".join(items) + "</ul>"
 
     return "<div>" + "<br>".join(esc(ln) for ln in lines) + "</div>"
+
 def reorder_ingredient(line: str) -> str:
     """
     Convert:
@@ -374,20 +384,21 @@ def reorder_ingredient(line: str) -> str:
         return f"{name} : {qty}{comment}"
     return f"{name}{comment}"
 
+
 st.divider()
-st.markdown('<div class="details-title">Details</div>', unsafe_allow_html=True)
+st.markdown('<div class="details-title">Détails</div>', unsafe_allow_html=True)
 
 recipe_names = df["name"].fillna("").tolist()
-selected_name = st.selectbox("Select a recipe", ["(none)"] + sorted(set(recipe_names)))
+selected_name = st.selectbox("Sélectionner une recette", ["(aucune)"] + sorted(set(recipe_names)))
 
-if selected_name != "(none)":
+if selected_name != "(aucune)":
     candidates = df[df["name"] == selected_name]
 
     if len(candidates) > 1:
         chosen_uid = st.selectbox(
-            "Which one?",
+            "Laquelle ?",
             candidates["created_by"].tolist(),
-            format_func=lambda uid: id_to_name.get(uid, "Unknown"),
+            format_func=lambda uid: id_to_name.get(uid, "Inconnu"),
         )
         row = candidates[candidates["created_by"] == chosen_uid].iloc[0]
     else:
@@ -396,8 +407,7 @@ if selected_name != "(none)":
     ingredients_html = "".join(
         f"<li>{esc(reorder_ingredient(line))}</li>"
         for line in (row.get("ingredients_lines") or [])
-    ) or "<li><i>No ingredients."
-
+    ) or "<li><i>Aucun ingrédient.</i></li>"
 
     instructions_html = render_text_or_bullets(row.get("instructions") or "", css_class="steps")
     notes_html = render_text_or_bullets(row.get("notes") or "")
@@ -407,16 +417,16 @@ if selected_name != "(none)":
       <h3 style="margin-top:0;">{esc(row.get("name"))}</h3>
 
       <div class="details-meta">
-        <b>Creator:</b> {esc(row.get("creator_name"))}<br>
-        <b>Seasons:</b> {esc(seasons_label(row.get("seasons", [])))}<br>
-        <b>Servings:</b> {esc(row.get("servings", 1))}<br>
-        <b>Time:</b>
-        Prep {esc(row.get("prep_minutes", 0))} min +
-        Cook {esc(row.get("cook_minutes", 0))} min :
+        <b>Créateur :</b> {esc(row.get("creator_name"))}<br>
+        <b>Saisons :</b> {esc(seasons_label_fr(row.get("seasons", [])))}<br>
+        <b>Portions :</b> {esc(row.get("servings", 1))}<br>
+        <b>Temps :</b>
+        Prépa {esc(row.get("prep_minutes", 0))} min +
+        Cuisson {esc(row.get("cook_minutes", 0))} min :
         Total {esc(row.get("total_minutes", 0))} min
       </div>
 
-      <div class="details-section-title">Ingredients</div>
+      <div class="details-section-title">Ingrédients</div>
       <ul>{ingredients_html}</ul>
     """
 
@@ -440,4 +450,3 @@ if selected_name != "(none)":
     html_block = textwrap.dedent(html_block).strip()
 
     st.markdown(html_block, unsafe_allow_html=True)
-
